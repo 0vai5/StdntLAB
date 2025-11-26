@@ -33,8 +33,8 @@ export default function RootLayout({
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
-            {children}
-            <Toaster />
+          {children}
+          <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>

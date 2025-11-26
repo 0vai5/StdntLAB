@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import { createClient } from "@/lib/supabase/client";
 import { signUpSchema, type SignUpFormData } from "@/lib/validations/auth";
 import { useState } from "react";
@@ -180,6 +181,7 @@ export default function SignUpPage() {
             )}
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading && <Spinner size="sm" className="mr-2" />}
             {isLoading ? "Creating account..." : "Sign Up"}
           </Button>
         </form>

@@ -37,6 +37,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAllStores } from "@/store";
 import { toast } from "sonner";
 
@@ -67,7 +69,7 @@ function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { state } = useSidebar();
-  const { user, signOut } = useAllStores();
+  const { user, signOut, isLoading } = useAllStores();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
@@ -158,21 +160,35 @@ function AppSidebar() {
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="" alt={user?.name || user?.email} />
-                    <AvatarFallback>
-                      {getInitials(user?.name, user?.email)}
-                    </AvatarFallback>
-                  </Avatar>
-                  {!isCollapsed && (
-                    <div className="flex flex-col gap-0.5 text-left">
-                      <span className="text-sm font-semibold">
-                        {user?.name || "User"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {user?.email}
-                      </span>
-                    </div>
+                  {isLoading ? (
+                    <>
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      {!isCollapsed && (
+                        <div className="flex flex-col gap-0.5 text-left">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-3 w-32" />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src="" alt={user?.name || user?.email} />
+                        <AvatarFallback>
+                          {getInitials(user?.name, user?.email)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {!isCollapsed && (
+                        <div className="flex flex-col gap-0.5 text-left">
+                          <span className="text-sm font-semibold">
+                            {user?.name || "User"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {user?.email}
+                          </span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
@@ -184,20 +200,32 @@ function AppSidebar() {
               >
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src="" alt={user?.name || user?.email} />
-                      <AvatarFallback>
-                        {getInitials(user?.name, user?.email)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-semibold">
-                        {user?.name || "User"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {user?.email}
-                      </span>
-                    </div>
+                    {isLoading ? (
+                      <>
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div className="flex flex-col gap-0.5">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-3 w-32" />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src="" alt={user?.name || user?.email} />
+                          <AvatarFallback>
+                            {getInitials(user?.name, user?.email)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-sm font-semibold">
+                            {user?.name || "User"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {user?.email}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -219,7 +247,11 @@ function AppSidebar() {
                   disabled={isSigningOut}
                   variant="destructive"
                 >
-                  <LogOut />
+                  {isSigningOut ? (
+                    <Spinner size="sm" className="mr-2" />
+                  ) : (
+                    <LogOut />
+                  )}
                   <span>{isSigningOut ? "Signing out..." : "Logout"}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -268,7 +300,11 @@ export default function DashboardLayout({
             disabled={isSigningOut}
             className="h-9 w-9"
           >
-            <LogOut className="h-4 w-4" />
+            {isSigningOut ? (
+              <Spinner size="sm" />
+            ) : (
+              <LogOut className="h-4 w-4" />
+            )}
             <span className="sr-only">Logout</span>
           </Button>
         </header>

@@ -18,6 +18,8 @@ interface RootStore {
   // Actions
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
+  fetchUserProfile: () => Promise<void>;
+  updateUserProfile: (data: Partial<ReturnType<typeof useAuthStore>["user"]>) => Promise<void>;
 }
 
 export const useRootStore = create<RootStore>((set, get) => ({
@@ -33,6 +35,14 @@ export const useRootStore = create<RootStore>((set, get) => ({
   
   initialize: async () => {
     await useAuthStore.getState().initialize();
+  },
+  
+  fetchUserProfile: async () => {
+    await useAuthStore.getState().fetchUserProfile();
+  },
+  
+  updateUserProfile: async (data) => {
+    await useAuthStore.getState().updateUserProfile(data);
   },
 }));
 
@@ -58,6 +68,8 @@ export const useAllStores = () => {
     // Actions
     signOut: authStore.signOut,
     initialize: authStore.initialize,
+    fetchUserProfile: authStore.fetchUserProfile,
+    updateUserProfile: authStore.updateUserProfile,
     setUser: authStore.setUser,
     setAuthUser: authStore.setAuthUser,
     setLoading: authStore.setLoading,

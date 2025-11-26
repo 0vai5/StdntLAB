@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
-import { Inter, Kalam } from "next/font/google";
+import { Inter, Lato } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const kalam = Kalam({
-  variable: "--font-kalam",
+const lato = Lato({
+  variable: "--font-lato",
   subsets: ["latin"],
   weight: ["300", "400", "700"],
 });
@@ -28,11 +29,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${kalam.variable} font-sans antialiased`}
+        className={`${inter.variable} ${lato.variable} font-sans antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
-          <Toaster />
+          <AuthProvider>
+            {children}
+            <Toaster />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

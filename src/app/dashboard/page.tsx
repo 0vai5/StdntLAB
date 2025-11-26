@@ -1,49 +1,37 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
-import { useState } from "react";
+import { useAllStores } from "@/store";
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const [isSigningOut, setIsSigningOut] = useState(false);
-
-  const handleSignOut = async () => {
-    setIsSigningOut(true);
-    try {
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      toast.success("Signed out successfully");
-      router.push("/auth/signin");
-      router.refresh();
-    } catch (error) {
-      toast.error("Error signing out");
-      console.error("Error signing out:", error);
-    } finally {
-      setIsSigningOut(false);
-    }
-  };
+  const { user } = useAllStores();
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-4xl font-bold text-foreground">
-            Dashboard
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Welcome to your dashboard
+      <div>
+        <h1 className="font-heading text-4xl font-bold text-foreground">
+          Welcome 👋 {user?.name || "User"}
+        </h1>
+        <p className="mt-2 text-muted-foreground">Here's your overview.</p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-lg border bg-card p-6">
+          <h3 className="font-semibold mb-2">Quick Stats</h3>
+          <p className="text-sm text-muted-foreground">
+            Your dashboard statistics will appear here.
           </p>
         </div>
-        <Button
-          onClick={handleSignOut}
-          disabled={isSigningOut}
-          variant="outline"
-        >
-          {isSigningOut ? "Signing out..." : "Sign Out"}
-        </Button>
+        <div className="rounded-lg border bg-card p-6">
+          <h3 className="font-semibold mb-2">Recent Activity</h3>
+          <p className="text-sm text-muted-foreground">
+            Your recent activities will be displayed here.
+          </p>
+        </div>
+        <div className="rounded-lg border bg-card p-6">
+          <h3 className="font-semibold mb-2">Upcoming Tasks</h3>
+          <p className="text-sm text-muted-foreground">
+            Your upcoming tasks and deadlines will appear here.
+          </p>
+        </div>
       </div>
     </div>
   );

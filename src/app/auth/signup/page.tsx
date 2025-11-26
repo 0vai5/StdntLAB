@@ -17,6 +17,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { signUpSchema, type SignUpFormData } from "@/lib/validations/auth";
 import { useState } from "react";
+import { rollbackAuthUser } from "@/lib/supabase/actions";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -36,9 +37,7 @@ export default function SignUpPage() {
     try {
       const supabase = createClient();
 
-      // Sign up the user
-      // The database trigger will automatically create the Users record
-      // If the trigger fails, the auth user creation will also fail (atomic)
+      // Step 1: Create auth user
       const { data: authData, error: signUpError } = await supabase.auth.signUp(
         {
           email: data.email,
@@ -59,6 +58,59 @@ export default function SignUpPage() {
       if (!authData.user) {
         toast.error("Failed to create account");
         return;
+      }
+
+      const userId = authData.user.id;
+
+      // Step 2: Insert into Users table using the auth user ID in user_id field
+      // Check if user already exists (in case database trigger created it)
+      const { data: existingUser } = await supabase
+        .from("Users")
+        .select("user_id")
+        .eq("user_id", userId)
+        .single();
+
+      if (!existingUser) {
+        // User doesn't exist, insert it with the auth user ID in user_id field
+        const { error: insertError } = await supabase.from("Users").insert({
+          user_id: userId,
+          email: data.email,
+          name: data.name,
+        });
+
+        if (insertError) {
+          // Step 3: Rollback - delete auth user if Users insert fails
+          console.error("Error inserting into Users table:", insertError);
+          toast.error(
+            `Failed to create user record: ${insertError.message}. Rolling back...`
+          );
+
+          const rollbackResult = await rollbackAuthUser(userId);
+          if (rollbackResult.success) {
+            toast.error(
+              "User creation failed and has been rolled back. Please try again."
+            );
+          } else {
+            toast.error(
+              `User creation failed. Rollback also failed: ${rollbackResult.error}. Please contact support.`
+            );
+            console.error(
+              `Failed to rollback auth user ${userId}. Manual cleanup may be required.`
+            );
+          }
+          return;
+        }
+      } else {
+        // User already exists (likely created by trigger), update name if needed
+        const { error: updateError } = await supabase
+          .from("Users")
+          .update({ name: data.name })
+          .eq("user_id", userId);
+
+        if (updateError) {
+          console.warn("User exists but failed to update name:", updateError);
+          // Don't rollback here since user was created successfully
+        }
       }
 
       toast.success("Account created successfully!");

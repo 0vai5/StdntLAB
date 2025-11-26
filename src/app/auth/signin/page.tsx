@@ -37,13 +37,18 @@ export default function SignInPage() {
 
       if (signInError) {
         toast.error(signInError.message);
+        setIsLoading(false);
         return;
       }
 
       if (authData.user) {
-        toast.success("Signed in successfully!");
-        router.push("/dashboard");
+        // Redirect immediately before showing toast
+        router.replace("/dashboard");
         router.refresh();
+        // Show toast after redirect starts (non-blocking)
+        setTimeout(() => {
+          toast.success("Signed in successfully!");
+        }, 0);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "An unexpected error occurred");

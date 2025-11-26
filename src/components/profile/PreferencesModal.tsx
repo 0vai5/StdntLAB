@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { PreferencesForm } from "./PreferencesForm";
 import { useAllStores } from "@/store";
-import { type EmptyFields } from "@/lib/utils/profile";
+import type { EmptyFields } from "@/lib/types/user";
 import type { ProfilePreferencesFormData } from "@/lib/validations/profile";
 
 interface PreferencesModalProps {

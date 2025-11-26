@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
+import { useTodoStore } from "./useTodoStore";
 import type { StoreApi } from "zustand";
 
 /**
@@ -9,38 +10,40 @@ import type { StoreApi } from "zustand";
 interface RootStore {
   // Access to all stores
   getAuthStore: () => ReturnType<typeof useAuthStore>;
-  
+
   // Direct state accessors
   getUser: () => ReturnType<typeof useAuthStore>["user"];
   getAuthUser: () => ReturnType<typeof useAuthStore>["authUser"];
   getIsLoading: () => ReturnType<typeof useAuthStore>["isLoading"];
-  
+
   // Actions
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
   fetchUserProfile: () => Promise<void>;
-  updateUserProfile: (data: Partial<ReturnType<typeof useAuthStore>["user"]>) => Promise<void>;
+  updateUserProfile: (
+    data: Partial<ReturnType<typeof useAuthStore>["user"]>
+  ) => Promise<void>;
 }
 
 export const useRootStore = create<RootStore>((set, get) => ({
   getAuthStore: () => useAuthStore.getState(),
-  
+
   getUser: () => useAuthStore.getState().user,
   getAuthUser: () => useAuthStore.getState().authUser,
   getIsLoading: () => useAuthStore.getState().isLoading,
-  
+
   signOut: async () => {
     await useAuthStore.getState().signOut();
   },
-  
+
   initialize: async () => {
     await useAuthStore.getState().initialize();
   },
-  
+
   fetchUserProfile: async () => {
     await useAuthStore.getState().fetchUserProfile();
   },
-  
+
   updateUserProfile: async (data) => {
     await useAuthStore.getState().updateUserProfile(data);
   },
@@ -52,20 +55,27 @@ export const useRootStore = create<RootStore>((set, get) => ({
  */
 export const useAllStores = () => {
   const authStore = useAuthStore();
+  const todoStore = useTodoStore();
   const rootStore = useRootStore();
-  
+
   return {
     // Individual stores
     authStore,
+    todoStore,
     rootStore,
-    
-    // Convenience accessors
+
+    // Auth convenience accessors
     user: authStore.user,
     authUser: authStore.authUser,
     isLoading: authStore.isLoading,
     isInitialized: authStore.isInitialized,
-    
-    // Actions
+
+    // Todo convenience accessors
+    todos: todoStore.todos,
+    recentActivities: todoStore.recentActivities,
+    todosLoading: todoStore.isLoading,
+
+    // Auth Actions
     signOut: authStore.signOut,
     initialize: authStore.initialize,
     fetchUserProfile: authStore.fetchUserProfile,
@@ -73,6 +83,16 @@ export const useAllStores = () => {
     setUser: authStore.setUser,
     setAuthUser: authStore.setAuthUser,
     setLoading: authStore.setLoading,
+
+    // Todo Actions
+    initializeTodos: todoStore.initialize,
+    fetchTodos: todoStore.fetchTodos,
+    createTodo: todoStore.createTodo,
+    updateTodo: todoStore.updateTodo,
+    deleteTodo: todoStore.deleteTodo,
+    toggleTodoStatus: todoStore.toggleTodoStatus,
+    getTodosByGroup: todoStore.getTodosByGroup,
+    getTodosByFilter: todoStore.getTodosByFilter,
+    getRecentActivities: todoStore.getRecentActivities,
   };
 };
-

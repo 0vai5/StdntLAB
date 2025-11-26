@@ -1,19 +1,7 @@
 import { create } from "zustand";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
-
-interface UserProfile {
-  email: string;
-  name?: string;
-  id?: string;
-  user_id?: string;
-  timezone?: string | null;
-  days_of_week?: string[] | null;
-  study_times?: string[] | null;
-  education_level?: string | null;
-  subjects?: string[] | null;
-  study_style?: string | null;
-}
+import type { UserProfile } from "@/lib/types/user";
 
 interface AuthState {
   user: UserProfile | null;

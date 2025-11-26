@@ -1,14 +1,4 @@
-import type { UserProfile } from "@/store/useAuthStore";
-
-export interface EmptyFields {
-  name?: boolean;
-  timezone?: boolean;
-  days_of_week?: boolean;
-  study_times?: boolean;
-  education_level?: boolean;
-  subjects?: boolean;
-  study_style?: boolean;
-}
+import type { UserProfile, EmptyFields } from "@/lib/types/user";
 
 /**
  * Check which fields are empty in the user profile

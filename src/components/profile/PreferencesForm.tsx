@@ -19,7 +19,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Combobox } from "@/components/ui/combobox";
 import { TIMEZONES } from "@/lib/data/timezones";
-import type { UserProfile } from "@/store/useAuthStore";
+import type { UserProfile } from "@/lib/types/user";
 
 const DAYS_OF_WEEK = [
   { value: "monday", label: "Monday" },

@@ -76,13 +76,16 @@ function AppSidebar() {
     setIsSigningOut(true);
     try {
       await signOut();
-      toast.success("Signed out successfully");
-      router.push("/auth/signin");
+      // Redirect immediately before showing toast
+      router.replace("/auth/signin");
       router.refresh();
+      // Show toast after redirect starts (non-blocking)
+      setTimeout(() => {
+        toast.success("Signed out successfully");
+      }, 0);
     } catch (error) {
       toast.error("Error signing out");
       console.error("Error signing out:", error);
-    } finally {
       setIsSigningOut(false);
     }
   };
@@ -276,13 +279,16 @@ export default function DashboardLayout({
     setIsSigningOut(true);
     try {
       await signOut();
-      toast.success("Signed out successfully");
-      router.push("/auth/signin");
+      // Redirect immediately before showing toast
+      router.replace("/auth/signin");
       router.refresh();
+      // Show toast after redirect starts (non-blocking)
+      setTimeout(() => {
+        toast.success("Signed out successfully");
+      }, 0);
     } catch (error) {
       toast.error("Error signing out");
       console.error("Error signing out:", error);
-    } finally {
       setIsSigningOut(false);
     }
   };

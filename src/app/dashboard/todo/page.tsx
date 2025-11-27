@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { CreateTodoInput, UpdateTodoInput } from "@/lib/types/todo";
 import { useAllStores } from "@/store";
 import { CheckSquare } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 export default function TodoPage() {
@@ -13,21 +13,44 @@ export default function TodoPage() {
     user,
     todos,
     todosLoading,
+    todosInitialized,
     initializeTodos,
     fetchTodos,
     createTodo,
     updateTodo,
     deleteTodo,
   } = useAllStores();
-  const [isInitializing, setIsInitializing] = useState(true);
+  
+  // Only show initializing if todos aren't already initialized
+  const [isInitializing, setIsInitializing] = useState(!todosInitialized);
+
+  // Filter to show only personal todos (group_id is null)
+  const personalTodos = useMemo(() => {
+    return todos.filter((todo) => todo.group_id === null);
+  }, [todos]);
 
   useEffect(() => {
     const initialize = async () => {
-      if (!user?.id) return;
+      if (!user?.id) {
+        setIsInitializing(false);
+        return;
+      }
 
+      // If todos are already initialized, fetch personal todos in background
+      if (todosInitialized) {
+        setIsInitializing(false);
+        // Fetch personal todos to ensure we have the latest data (don't block UI)
+        fetchTodos(Number(user.id), null).catch((error) => {
+          console.error("Error fetching todos:", error);
+        });
+        return;
+      }
+
+      // Only show loading if we actually need to initialize
       setIsInitializing(true);
+
       try {
-        // Initialize todos store with user ID (UUID string from Users table)
+        // Initialize todos store with user ID
         await initializeTodos(Number(user.id));
         // Fetch private todos (group_id is null)
         await fetchTodos(Number(user.id), null);
@@ -42,7 +65,7 @@ export default function TodoPage() {
     if (user) {
       initialize();
     }
-  }, [user?.id, initializeTodos, fetchTodos, user]);
+  }, [user?.id, todosInitialized, initializeTodos, fetchTodos, user]);
 
   const handleCreateTodo = async (input: CreateTodoInput) => {
     if (!user?.id) {
@@ -83,7 +106,7 @@ export default function TodoPage() {
         </p>
       </div>
 
-      {isInitializing || todosLoading ? (
+      {isInitializing || (!todosInitialized && todosLoading) ? (
         <div className="space-y-4">
           <Skeleton className="h-12 w-full" />
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -94,8 +117,8 @@ export default function TodoPage() {
         </div>
       ) : (
         <TodoList
-          todos={todos}
-          isLoading={todosLoading}
+          todos={personalTodos}
+          isLoading={!todosInitialized && todosLoading}
           onCreateTodo={handleCreateTodo}
           onUpdateTodo={handleUpdateTodo}
           onDeleteTodo={handleDeleteTodo}

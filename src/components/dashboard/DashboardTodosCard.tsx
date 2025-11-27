@@ -12,7 +12,8 @@ import {
   EmptyDescription,
 } from "@/components/ui/empty";
 import { Clock, PartyPopper } from "lucide-react";
-import type { Todo, TodoPriority } from "@/lib/types/todo";
+import type { Todo } from "@/lib/types/todo";
+import type { TodoPriority } from "@/lib/types/todo-enums";
 
 interface DashboardTodosCardProps {
   todos: Todo[];

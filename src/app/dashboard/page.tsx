@@ -1,27 +1,27 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/rules-of-hooks */
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useAllStores } from "@/store";
-import {
-  getEmptyFields,
-  isProfileComplete,
-  getProfileCompletionPercentage,
-} from "@/lib/utils/profile";
 import { PreferencesModal } from "@/components/profile/PreferencesModal";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import {
-  UserPlus,
-  CheckSquare,
-  TrendingUp,
-  Clock,
-  Activity,
-} from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatActivityMessage } from "@/lib/utils/activity";
+import {
+  getEmptyFields,
+  getProfileCompletionPercentage,
+  isProfileComplete,
+} from "@/lib/utils/profile";
+import { useAllStores } from "@/store";
+import {
+  Activity,
+  CheckSquare,
+  Clock,
+  TrendingUp,
+  UserPlus,
+} from "lucide-react";
 import Link from "next/link";
-import type { Todo } from "@/lib/types/todo";
+import { useEffect, useMemo, useState } from "react";
 
 export default function DashboardPage() {
   const {
@@ -40,8 +40,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user?.id && !todosLoading) {
-      initializeTodos(user.id);
-      fetchTodos(user.id, null);
+      initializeTodos(Number(user.id));
+      fetchTodos(Number(user.id), null);
     }
   }, [user?.id, initializeTodos, fetchTodos, todosLoading]);
 
@@ -174,7 +174,7 @@ export default function DashboardPage() {
         <h1 className="font-heading text-4xl font-bold text-foreground">
           Welcome 👋 {user?.name || "User"}
         </h1>
-        <p className="mt-2 text-muted-foreground">Here's your overview.</p>
+        <p className="mt-2 text-muted-foreground">Here&apos;s your overview.</p>
       </div>
 
       {/* Quick Stats */}

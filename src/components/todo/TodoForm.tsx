@@ -94,7 +94,7 @@ export function TodoForm({
       reset({
         title: todo.title,
         description: todo.description || null,
-        date: todo.date || null,
+        date: todo.due_date || null,
         status: todo.status,
         type: todo.type,
         priority: todo.priority || null,

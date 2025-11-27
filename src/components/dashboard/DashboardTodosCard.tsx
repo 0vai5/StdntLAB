@@ -60,8 +60,8 @@ export function DashboardTodosCard({
   onToggleTodo,
 }: DashboardTodosCardProps) {
   return (
-    <Card className="p-4 w-full">
-      <h2 className="text-lg font-semibold mb-3">Your Todos</h2>
+    <Card className="p-3 w-full">
+      <h2 className="text-base font-semibold mb-2">Your Todos</h2>
       {isLoading ? (
         <div className="space-y-2 flex flex-col">
           {[...Array(3)].map((_, i) => (
@@ -81,7 +81,7 @@ export function DashboardTodosCard({
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="space-y-2 flex flex-col">
+        <div className="space-y-1.5 flex flex-col">
           {todos.map((todo) => {
             const isOverdue =
               todo.due_date &&

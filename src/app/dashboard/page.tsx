@@ -8,6 +8,9 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { DashboardTodosCard } from "@/components/dashboard/DashboardTodosCard";
+import { MinutesStudiedCard } from "@/components/dashboard/MinutesStudiedCard";
+import { DaysLeftToTargetCard } from "@/components/dashboard/DaysLeftToTargetCard";
+import { GroupMatchingCTA } from "@/components/dashboard/GroupMatchingCTA";
 import {
   getEmptyFields,
   getProfileCompletionPercentage,
@@ -200,6 +203,9 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {/* Group Matching CTA */}
+      <GroupMatchingCTA />
+
       {/* Progress */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -211,12 +217,16 @@ export default function DashboardPage() {
         <Progress value={progress} className="h-3" />
       </div>
 
-      {/* Todos Card */}
-      <DashboardTodosCard
-        todos={incompleteTodos}
-        isLoading={todosLoading}
-        onToggleTodo={handleToggleTodo}
-      />
+      {/* Dashboard Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <DashboardTodosCard
+          todos={incompleteTodos}
+          isLoading={todosLoading}
+          onToggleTodo={handleToggleTodo}
+        />
+        <MinutesStudiedCard />
+        <DaysLeftToTargetCard />
+      </div>
     </div>
   );
 }

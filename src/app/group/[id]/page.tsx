@@ -50,13 +50,24 @@ export default function GroupPage() {
     setIsLoading(true);
     try {
       const supabase = createClient();
+      const numericGroupId = parseInt(groupId);
 
-      // Fetch group details
-      const { data: groupData, error: groupError } = await supabase
-        .from("groups")
-        .select("*")
-        .eq("id", parseInt(groupId))
-        .single();
+      // Fetch group details and members in parallel
+      const [groupResult, membersResult] = await Promise.all([
+        supabase
+          .from("groups")
+          .select("*")
+          .eq("id", numericGroupId)
+          .single(),
+        supabase
+          .from("group_members")
+          .select("id, user_id, role, joined_at")
+          .eq("group_id", numericGroupId)
+          .order("joined_at", { ascending: true }),
+      ]);
+
+      const { data: groupData, error: groupError } = groupResult;
+      const { data: membersData, error: membersError } = membersResult;
 
       if (groupError || !groupData) {
         toast.error("Group not found");
@@ -66,38 +77,65 @@ export default function GroupPage() {
 
       setGroup(groupData);
 
-      // Fetch group members
-      const { data: membersData, error: membersError } = await supabase
-        .from("group_members")
-        .select("id, user_id, role, joined_at")
-        .eq("group_id", parseInt(groupId))
-        .order("joined_at", { ascending: true });
-
       if (membersError) {
         console.error("Error fetching members:", membersError);
         toast.error("Failed to load group members");
         setMembers([]);
-      } else {
-        // Fetch user details for each member
-        const membersWithUsers = await Promise.all(
-          (membersData || []).map(async (member) => {
-            const { data: userData } = await supabase
-              .from("Users")
-              .select("id, name, email")
-              .eq("id", member.user_id)
-              .single();
-
-            return {
-              id: member.id,
-              user_id: member.user_id,
-              role: member.role,
-              joined_at: member.joined_at,
-              user: userData || { id: member.user_id, name: null, email: "" },
-            };
-          })
-        );
-        setMembers(membersWithUsers);
+        setIsLoading(false);
+        return;
       }
+
+      if (!membersData || membersData.length === 0) {
+        setMembers([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Get all unique user IDs
+      const userIds = [
+        ...new Set(
+          membersData
+            .map((member) => member.user_id)
+            .filter((id): id is number => id !== null)
+        ),
+      ];
+
+      // Fetch all user details in a single query using 'in' operator
+      const { data: usersData, error: usersError } = await supabase
+        .from("Users")
+        .select("id, name, email")
+        .in("id", userIds);
+
+      if (usersError) {
+        console.error("Error fetching users:", usersError);
+        toast.error("Failed to load member details");
+        setMembers([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Create a map of user_id to user data
+      const userMap = new Map(
+        (usersData || []).map((user) => [user.id, user])
+      );
+
+      // Map members with user details
+      const membersWithUsers = membersData.map((member) => {
+        const userData = userMap.get(member.user_id);
+        return {
+          id: member.id,
+          user_id: member.user_id,
+          role: member.role,
+          joined_at: member.joined_at,
+          user: userData || {
+            id: member.user_id,
+            name: null,
+            email: "",
+          },
+        };
+      });
+
+      setMembers(membersWithUsers);
     } catch (error) {
       console.error("Error fetching group data:", error);
       toast.error("Failed to load group");

@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAllStores } from "@/store";
 import { TodoList } from "@/components/todo/TodoList";
-import { CheckSquare } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
 import type { CreateTodoInput, UpdateTodoInput } from "@/lib/types/todo";
+import { useAllStores } from "@/store";
+import { CheckSquare } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function TodoPage() {
@@ -29,9 +28,9 @@ export default function TodoPage() {
       setIsInitializing(true);
       try {
         // Initialize todos store with user ID (UUID string from Users table)
-        await initializeTodos(user.id);
+        await initializeTodos(Number(user.id));
         // Fetch private todos (group_id is null)
-        await fetchTodos(user.id, null);
+        await fetchTodos(Number(user.id), null);
       } catch (error) {
         console.error("Error initializing todos:", error);
         toast.error("Failed to load todos");
@@ -43,14 +42,14 @@ export default function TodoPage() {
     if (user) {
       initialize();
     }
-  }, [user?.id, initializeTodos, fetchTodos]);
+  }, [user?.id, initializeTodos, fetchTodos, user]);
 
   const handleCreateTodo = async (input: CreateTodoInput) => {
     if (!user?.id) {
       toast.error("User not found");
       return null;
     }
-    return await createTodo(user.id, input);
+    return await createTodo(Number(user.id), input);
   };
 
   const handleUpdateTodo = async (todoId: number, input: UpdateTodoInput) => {

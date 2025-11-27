@@ -26,9 +26,10 @@ import type { TodoListProps } from "@/lib/types/components";
 import type {
   TodoStatus,
   TodoType,
-  TodoPriority,
+  // TodoPriority,
 } from "@/lib/types/todo-enums";
 import { toast } from "sonner";
+import { CreateTodoInput, Todo, UpdateTodoInput } from "@/lib/types";
 
 const STATUS_FILTERS: { value: TodoStatus | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -84,8 +85,8 @@ export function TodoList({
     // Sort by: overdue first, then by due date, then by created date
     filtered.sort((a, b) => {
       const now = new Date();
-      const aDate = a.date ? new Date(a.date) : null;
-      const bDate = b.date ? new Date(b.date) : null;
+      const aDate = a.due_date ? new Date(a.due_date) : null;
+      const bDate = b.due_date ? new Date(b.due_date) : null;
 
       // Overdue items first
       if (aDate && aDate < now && a.status !== "completed") {
@@ -240,7 +241,7 @@ export function TodoList({
         </div>
         <Select
           value={statusFilter}
-          onValueChange={(value) => setStatusFilter(value as any)}
+          onValueChange={(value) => setStatusFilter(value as TodoStatus)}
         >
           <SelectTrigger className="w-full sm:w-[180px]">
             <Filter className="mr-2 h-4 w-4" />
@@ -256,7 +257,7 @@ export function TodoList({
         </Select>
         <Select
           value={typeFilter}
-          onValueChange={(value) => setTypeFilter(value as any)}
+          onValueChange={(value) => setTypeFilter(value as TodoType)}
         >
           <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Filter by type" />

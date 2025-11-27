@@ -152,13 +152,13 @@ export default function DashboardPage() {
       .filter((todo) => {
         if (todo.status === "completed")
           return false;
-        if (!todo.date) return false;
-        const dueDate = new Date(todo.date);
+        if (!todo.due_date) return false;
+        const dueDate = new Date(todo.due_date);
         return dueDate >= now;
       })
       .sort((a, b) => {
-        const aDate = a.date ? new Date(a.date).getTime() : Infinity;
-        const bDate = b.date ? new Date(b.date).getTime() : Infinity;
+        const aDate = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+        const bDate = b.due_date ? new Date(b.due_date).getTime() : Infinity;
         return aDate - bDate;
       })
       .slice(0, 5);
@@ -280,10 +280,10 @@ export default function DashboardPage() {
                   <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{todo.title}</p>
-                    {todo.date && (
+                    {todo.due_date && (
                       <p className="text-xs text-muted-foreground">
                         Due{" "}
-                        {new Date(todo.date).toLocaleDateString("en-US", {
+                        {new Date(todo.due_date).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                           year: "numeric",

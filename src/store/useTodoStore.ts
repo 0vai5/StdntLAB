@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Todo, CreateTodoInput, UpdateTodoInput } from "@/lib/types/todo";
 import type { TodoFilters } from "@/lib/types/todo-filters";
 import type { RecentActivity } from "@/lib/types/activity";
+import { TodoStatus } from "@/lib/types";
 
 interface TodoState {
   todos: Todo[];
@@ -36,11 +37,11 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
   initialize: async (userId: string | number) => {
     set({ isLoading: true, isInitialized: false });
-    await get().fetchTodos(userId);
+    await get().fetchTodos(Number(userId));
     set({ isLoading: false, isInitialized: true });
   },
 
-  fetchTodos: async (userId: string | number, groupId?: number | null) => {
+  fetchTodos: async (userId: number, groupId?: number | null) => {
     set({ isLoading: true });
     const supabase = createClient();
 
@@ -86,7 +87,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       }
 
       // Map database 'due_date' to TypeScript 'date' field
-      const mappedTodos = (data || []).map((todo: any) => ({
+      const mappedTodos = (data || []).map((todo: Todo) => ({
         ...todo,
         date: todo.due_date || null,
       }));
@@ -168,11 +169,11 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     const supabase = createClient();
 
     try {
-      const updateData: any = {};
+      const updateData: UpdateTodoInput = {};
       if (input.title !== undefined) updateData.title = input.title;
       if (input.description !== undefined)
         updateData.description = input.description;
-      if (input.date !== undefined) updateData.due_date = input.date; // Map 'date' to 'due_date' for database
+      if (input.due_date !== undefined) updateData.due_date = input.due_date; // Map 'date' to 'due_date' for database
       if (input.status !== undefined) updateData.status = input.status;
       if (input.type !== undefined) updateData.type = input.type;
       if (input.priority !== undefined) updateData.priority = input.priority;
@@ -259,8 +260,9 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     }
   },
 
-  toggleTodoStatus: async (todoId: number, status: Todo["status"]) => {
-    return await get().updateTodo(todoId, { status });
+  toggleTodoStatus: async (todoId: number, status: TodoStatus) => {
+    const result = await get().updateTodo(todoId, { status });
+    return result !== null;
   },
 
   getTodosByGroup: (groupId: number) => {
@@ -298,13 +300,13 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
     if (filters.date_from) {
       filtered = filtered.filter(
-        (todo) => todo.date && todo.date >= filters.date_from!
+        (todo) => todo.due_date && todo.due_date >= filters.date_from!
       );
     }
 
     if (filters.date_to) {
       filtered = filtered.filter(
-        (todo) => todo.date && todo.date <= filters.date_to!
+        (todo) => todo.due_date && todo.due_date <= filters.date_to!
       );
     }
 

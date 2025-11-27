@@ -10,7 +10,7 @@ export interface Todo {
   user_id: number;
   title: string;
   description: string | null;
-  date: string | null; // due_date
+  due_date: string | null; // due_date
   status: TodoStatus;
   type: TodoType;
   priority: TodoPriority | null;
@@ -36,7 +36,7 @@ export interface CreateTodoInput {
 export interface UpdateTodoInput {
   title?: string;
   description?: string | null;
-  date?: string | null; // due_date
+  due_date?: string | null; // due_date
   status?: TodoStatus;
   type?: TodoType;
   priority?: TodoPriority | null;

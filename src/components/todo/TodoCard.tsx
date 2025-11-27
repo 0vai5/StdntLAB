@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  CheckCircle2,
-  Circle,
-  Clock,
-  AlertCircle,
-  Trash2,
-  Edit2,
-  MoreVertical,
-} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -18,24 +10,31 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import type { TodoCardProps } from "@/lib/types/components";
-import type { TodoStatus, TodoPriority } from "@/lib/types/todo-enums";
 import type { Todo } from "@/lib/types/todo";
+import type { TodoPriority, TodoStatus } from "@/lib/types/todo-enums";
+import { cn } from "@/lib/utils";
+import {
+  // CheckCircle2,
+  // Circle,
+  Clock,
+  Edit2,
+  MoreVertical,
+  Trash2
+} from "lucide-react";
 
-const STATUS_CONFIG: Record<
-  TodoStatus,
-  { label: string; icon: typeof CheckCircle2; color: string }
-> = {
-  pending: { label: "Pending", icon: Circle, color: "text-muted-foreground" },
-  in_progress: { label: "In Progress", icon: Clock, color: "text-blue-500" },
-  completed: {
-    label: "Completed",
-    icon: CheckCircle2,
-    color: "text-green-500",
-  },
-};
+// const STATUS_CONFIG: Record<
+//   TodoStatus,
+//   { label: string; icon: typeof CheckCircle2; color: string }
+// > = {
+//   pending: { label: "Pending", icon: Circle, color: "text-muted-foreground" },
+//   in_progress: { label: "In Progress", icon: Clock, color: "text-blue-500" },
+//   completed: {
+//     label: "Completed",
+//     icon: CheckCircle2,
+//     color: "text-green-500",
+//   },
+// };
 
 const PRIORITY_CONFIG: Record<
   TodoPriority,
@@ -62,7 +61,7 @@ export function TodoCard({
   onDelete,
   isLoading = false,
 }: TodoCardProps) {
-  const statusConfig = STATUS_CONFIG[todo.status];
+  // const statusConfig = STATUS_CONFIG[todo.status];
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -85,12 +84,12 @@ export function TodoCard({
   };
 
   const isOverdue =
-    todo.date &&
-    new Date(todo.date) < new Date() &&
+    todo.due_date &&
+    new Date(todo.due_date) < new Date() &&
     todo.status !== "completed";
   const isDueToday =
-    todo.date &&
-    new Date(todo.date).toISOString().split("T")[0] ===
+    todo.due_date &&
+    new Date(todo.due_date).toISOString().split("T")[0] ===
       new Date().toISOString().split("T")[0];
 
   return (
@@ -184,7 +183,7 @@ export function TodoCard({
               </Badge>
             )}
 
-            {todo.date && (
+            {todo.due_date && (
               <div
                 className={cn(
                   "flex items-center gap-1 text-xs",
@@ -194,7 +193,7 @@ export function TodoCard({
                 )}
               >
                 <Clock className="h-3 w-3" />
-                <span>{formatDate(todo.date)}</span>
+                <span>{formatDate(todo.due_date)}</span>
               </div>
             )}
           </div>

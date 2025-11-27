@@ -1,7 +1,9 @@
 import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
 import { useTodoStore } from "./useTodoStore";
-import type { StoreApi } from "zustand";
+// import type { StoreApi } from "zustand";
+import { UserProfile } from "@/lib/types";
+import { User } from "@supabase/supabase-js";
 
 /**
  * Root store that provides access to all Zustand stores
@@ -12,20 +14,20 @@ interface RootStore {
   getAuthStore: () => ReturnType<typeof useAuthStore>;
 
   // Direct state accessors
-  getUser: () => ReturnType<typeof useAuthStore>["user"];
-  getAuthUser: () => ReturnType<typeof useAuthStore>["authUser"];
-  getIsLoading: () => ReturnType<typeof useAuthStore>["isLoading"];
+  getUser: () => UserProfile | null;
+  getAuthUser: () => User | null;
+  getIsLoading: () => boolean;
 
   // Actions
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
   fetchUserProfile: () => Promise<void>;
   updateUserProfile: (
-    data: Partial<ReturnType<typeof useAuthStore>["user"]>
+    data: Partial<UserProfile>
   ) => Promise<void>;
 }
 
-export const useRootStore = create<RootStore>((set, get) => ({
+export const useRootStore = create<RootStore>((_, __) => ({
   getAuthStore: () => useAuthStore.getState(),
 
   getUser: () => useAuthStore.getState().user,

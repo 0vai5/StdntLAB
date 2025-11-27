@@ -1,21 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import { User, Mail, MapPin, GraduationCap, BookOpen, Clock, Calendar, Trophy, Users } from "lucide-react";
-import { useAllStores } from "@/store";
+import { PreferencesModal } from "@/components/profile/PreferencesModal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PreferencesModal } from "@/components/profile/PreferencesModal";
-import { getEmptyFields } from "@/lib/utils/profile";
 import {
   Empty,
-  EmptyHeader,
-  EmptyTitle,
   EmptyDescription,
+  EmptyHeader,
   EmptyMedia,
+  EmptyTitle,
 } from "@/components/ui/empty";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAllStores } from "@/store";
+import { BookOpen, Calendar, Clock, GraduationCap, Mail, MapPin, Trophy, User, Users } from "lucide-react";
+import { useState } from "react";
 
 const DAYS_OF_WEEK = [
   { value: "monday", label: "Monday" },

@@ -15,7 +15,11 @@ interface TodoState {
   initialize: (userId: number) => Promise<void>;
   fetchTodos: (userId: number, groupId?: number | null) => Promise<void>;
   createTodo: (userId: number, input: CreateTodoInput) => Promise<Todo | null>;
-  updateTodo: (todoId: number, input: UpdateTodoInput) => Promise<Todo | null>;
+  updateTodo: (
+    todoId: number,
+    input: UpdateTodoInput,
+    userId?: number
+  ) => Promise<Todo | null>;
   deleteTodo: (todoId: number) => Promise<boolean>;
   toggleTodoStatus: (
     todoId: number,
@@ -64,30 +68,102 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         numericUserId = userId;
       }
 
-      let query = supabase
-        .from("Todos")
-        .select("*")
-        .eq("user_id", numericUserId)
-        .order("created_at", { ascending: false });
+      // If groupId is explicitly null, fetch only personal todos
+      if (groupId === null) {
+        const { data, error } = await supabase
+          .from("Todos")
+          .select("*")
+          .eq("user_id", numericUserId)
+          .is("group_id", null)
+          .order("created_at", { ascending: false });
 
-      if (groupId !== undefined) {
-        if (groupId === null) {
-          query = query.is("group_id", null);
-        } else {
-          query = query.eq("group_id", groupId);
+        if (error) {
+          console.error("Error fetching todos:", error);
+          set({ todos: [], isLoading: false });
+          return;
         }
-      }
 
-      const { data, error } = await query;
+        const mappedTodos = (data || []).map((todo: Todo) => ({
+          ...todo,
+          date: todo.due_date || null,
+        }));
 
-      if (error) {
-        console.error("Error fetching todos:", error);
-        set({ todos: [], isLoading: false });
+        set({ todos: mappedTodos || [], isLoading: false });
         return;
       }
 
-      // Map database 'due_date' to TypeScript 'date' field
-      const mappedTodos = (data || []).map((todo: Todo) => ({
+      // If groupId is specified, fetch todos for that group
+      if (groupId !== undefined && groupId !== null) {
+        const { data, error } = await supabase
+          .from("Todos")
+          .select("*")
+          .eq("group_id", groupId)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching todos:", error);
+          set({ todos: [], isLoading: false });
+          return;
+        }
+
+        const mappedTodos = (data || []).map((todo: Todo) => ({
+          ...todo,
+          date: todo.due_date || null,
+        }));
+
+        set({ todos: mappedTodos || [], isLoading: false });
+        return;
+      }
+
+      // If groupId is undefined, fetch both personal and group todos
+      // First, get all groups the user is a member of
+      const { data: memberData, error: memberError } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", numericUserId);
+
+      if (memberError) {
+        console.error("Error fetching group memberships:", memberError);
+        // Continue with personal todos only
+      }
+
+      const userGroupIds = memberData
+        ? memberData
+            .map((m) => m.group_id)
+            .filter((id): id is number => id !== null)
+        : [];
+
+      // Fetch personal todos
+      const { data: personalTodos, error: personalError } = await supabase
+        .from("Todos")
+        .select("*")
+        .eq("user_id", numericUserId)
+        .is("group_id", null)
+        .order("created_at", { ascending: false });
+
+      if (personalError) {
+        console.error("Error fetching personal todos:", personalError);
+      }
+
+      // Fetch group todos where user is a member
+      let groupTodos: any[] = [];
+      if (userGroupIds.length > 0) {
+        const { data: groupTodosData, error: groupTodosError } = await supabase
+          .from("Todos")
+          .select("*")
+          .in("group_id", userGroupIds)
+          .order("created_at", { ascending: false });
+
+        if (groupTodosError) {
+          console.error("Error fetching group todos:", groupTodosError);
+        } else {
+          groupTodos = groupTodosData || [];
+        }
+      }
+
+      // Combine and map todos
+      const allTodos = [...(personalTodos || []), ...groupTodos];
+      const mappedTodos = allTodos.map((todo: Todo) => ({
         ...todo,
         date: todo.due_date || null,
       }));
@@ -165,10 +241,19 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     }
   },
 
-  updateTodo: async (todoId: number, input: UpdateTodoInput) => {
+  updateTodo: async (
+    todoId: number,
+    input: UpdateTodoInput,
+    userId?: number
+  ) => {
     const supabase = createClient();
 
     try {
+      // Get the current todo to check if status is changing to completed
+      const currentTodo = get().todos.find((t) => t.id === todoId);
+      const isCompleting =
+        input.status === "completed" && currentTodo?.status !== "completed";
+
       const updateData: UpdateTodoInput = {};
       if (input.title !== undefined) updateData.title = input.title;
       if (input.description !== undefined)
@@ -192,6 +277,35 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       if (error) {
         console.error("Error updating todo:", error);
         return null;
+      }
+
+      // If completing the todo, create a completion record
+      if (isCompleting) {
+        // Use provided userId, or fall back to todo's user_id (creator)
+        let numericUserId: number | undefined = userId;
+
+        if (!numericUserId && currentTodo) {
+          numericUserId = currentTodo.user_id;
+        }
+
+        if (numericUserId) {
+          const completedAt = new Date().toISOString();
+          const { error: completionError } = await supabase
+            .from("todo_completions")
+            .insert({
+              todo_id: todoId,
+              user_id: numericUserId,
+              completed_at: completedAt,
+              completed: true,
+              created_at: completedAt,
+              updated_at: completedAt,
+            });
+
+          if (completionError) {
+            console.error("Error creating completion record:", completionError);
+            // Don't fail the todo update if completion record fails
+          }
+        }
       }
 
       // Map database 'due_date' to TypeScript 'date' field

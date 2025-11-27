@@ -188,7 +188,17 @@ export default function DashboardPage() {
     const newStatus: TodoStatus =
       currentStatus === "completed" ? "pending" : "completed";
     try {
-      const result = await updateTodo(todoId, { status: newStatus });
+      if (!user?.id) {
+        toast.error("User not found");
+        return;
+      }
+      const numericUserId =
+        typeof user.id === "number" ? user.id : parseInt(user.id || "0");
+      const result = await updateTodo(
+        todoId,
+        { status: newStatus },
+        numericUserId
+      );
       if (result) {
         toast.success(
           newStatus === "completed"

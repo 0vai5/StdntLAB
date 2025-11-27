@@ -20,13 +20,15 @@ export default function TodoPage() {
     updateTodo,
     deleteTodo,
   } = useAllStores();
-  
+
   // Only show initializing if todos aren't already initialized
   const [isInitializing, setIsInitializing] = useState(!todosInitialized);
 
-  // Filter to show only personal todos (group_id is null)
-  const personalTodos = useMemo(() => {
-    return todos.filter((todo) => todo.group_id === null);
+  // Separate personal and group todos
+  const { personalTodos, groupTodos } = useMemo(() => {
+    const personal = todos.filter((todo) => todo.group_id === null);
+    const group = todos.filter((todo) => todo.group_id !== null);
+    return { personalTodos: personal, groupTodos: group };
   }, [todos]);
 
   useEffect(() => {
@@ -36,11 +38,11 @@ export default function TodoPage() {
         return;
       }
 
-      // If todos are already initialized, fetch personal todos in background
+      // If todos are already initialized, fetch all todos in background
       if (todosInitialized) {
         setIsInitializing(false);
-        // Fetch personal todos to ensure we have the latest data (don't block UI)
-        fetchTodos(Number(user.id), null).catch((error) => {
+        // Fetch all todos (personal + group) to ensure we have the latest data (don't block UI)
+        fetchTodos(Number(user.id)).catch((error) => {
           console.error("Error fetching todos:", error);
         });
         return;
@@ -52,8 +54,8 @@ export default function TodoPage() {
       try {
         // Initialize todos store with user ID
         await initializeTodos(Number(user.id));
-        // Fetch private todos (group_id is null)
-        await fetchTodos(Number(user.id), null);
+        // Fetch all todos (personal + group todos where user is a member)
+        await fetchTodos(Number(user.id));
       } catch (error) {
         console.error("Error initializing todos:", error);
         toast.error("Failed to load todos");
@@ -76,7 +78,13 @@ export default function TodoPage() {
   };
 
   const handleUpdateTodo = async (todoId: number, input: UpdateTodoInput) => {
-    return await updateTodo(todoId, input);
+    if (!user?.id) {
+      toast.error("User not found");
+      return null;
+    }
+    const numericUserId =
+      typeof user.id === "number" ? user.id : parseInt(user.id || "0");
+    return await updateTodo(todoId, input, numericUserId);
   };
 
   const handleDeleteTodo = async (todoId: number) => {
@@ -116,14 +124,45 @@ export default function TodoPage() {
           </div>
         </div>
       ) : (
-        <TodoList
-          todos={personalTodos}
-          isLoading={!todosInitialized && todosLoading}
-          onCreateTodo={handleCreateTodo}
-          onUpdateTodo={handleUpdateTodo}
-          onDeleteTodo={handleDeleteTodo}
-          groupId={null}
-        />
+        <div className="space-y-8">
+          {/* Personal Todos Section */}
+          <div>
+            <div className="mb-4">
+              <h2 className="text-2xl font-semibold mb-1">Personal Todos</h2>
+              <p className="text-sm text-muted-foreground">
+                Your personal tasks and assignments
+              </p>
+            </div>
+            <TodoList
+              todos={personalTodos}
+              isLoading={!todosInitialized && todosLoading}
+              onCreateTodo={handleCreateTodo}
+              onUpdateTodo={handleUpdateTodo}
+              onDeleteTodo={handleDeleteTodo}
+              groupId={null}
+            />
+          </div>
+
+          {/* Group Todos Section */}
+          {groupTodos.length > 0 && (
+            <div>
+              <div className="mb-4">
+                <h2 className="text-2xl font-semibold mb-1">Group Todos</h2>
+                <p className="text-sm text-muted-foreground">
+                  Tasks from your study groups
+                </p>
+              </div>
+              <TodoList
+                todos={groupTodos}
+                isLoading={!todosInitialized && todosLoading}
+                onCreateTodo={handleCreateTodo}
+                onUpdateTodo={handleUpdateTodo}
+                onDeleteTodo={handleDeleteTodo}
+                groupId={undefined}
+              />
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

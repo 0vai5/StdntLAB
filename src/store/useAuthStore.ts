@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import type { UserProfile } from "@/lib/types/user";
+import { useGroupStore } from "./useGroupStore";
 
 interface AuthState {
   user: UserProfile | null;
@@ -115,6 +116,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const supabase = createClient();
     await supabase.auth.signOut();
     set({ user: null, authUser: null });
+    // Clear groups when user signs out
+    useGroupStore.getState().clearGroups();
   },
 
   fetchUserProfile: async () => {

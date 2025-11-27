@@ -7,6 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyMedia,
+} from "@/components/ui/empty";
 import { Users, ArrowRight } from "lucide-react";
 import { useAllStores } from "@/store";
 
@@ -22,11 +29,21 @@ export default function GroupsPage() {
   } = useAllStores();
 
   useEffect(() => {
-    // Initialize groups if user exists and groups are not initialized
-    if (user?.id && !groupsLoading && !groupsInitialized) {
-      initializeGroups(Number(user.id));
+    // Initialize groups only if user exists, not loading, and not already initialized
+    if (user?.id && !isUserLoading && !groupsLoading && !groupsInitialized) {
+      const numericUserId =
+        typeof user.id === "number" ? user.id : parseInt(user.id || "0");
+      if (!isNaN(numericUserId)) {
+        initializeGroups(numericUserId);
+      }
     }
-  }, [user?.id, groupsInitialized, initializeGroups, groupsLoading]);
+  }, [
+    user?.id,
+    isUserLoading,
+    groupsLoading,
+    groupsInitialized,
+    initializeGroups,
+  ]);
 
   if (isUserLoading || groupsLoading) {
     return (
@@ -37,7 +54,7 @@ export default function GroupsPage() {
             My Groups
           </h1>
           <p className="mt-2 text-muted-foreground">
-            All the study groups you're a member of
+            All the study groups you&apos;re a member of
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -61,7 +78,9 @@ export default function GroupsPage() {
           </h1>
         </div>
         <Card className="p-6">
-          <p className="text-muted-foreground">Please sign in to view your groups</p>
+          <p className="text-muted-foreground">
+            Please sign in to view your groups
+          </p>
         </Card>
       </div>
     );
@@ -75,25 +94,29 @@ export default function GroupsPage() {
           My Groups
         </h1>
         <p className="mt-2 text-muted-foreground">
-          All the study groups you're a member of
+          All the study groups you&apos;re a member of
         </p>
       </div>
 
-      {groups.length === 0 ? (
-        <Card className="p-12 text-center">
-          <Users className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Groups Yet</h3>
-          <p className="text-muted-foreground mb-6">
-            You haven't joined any study groups yet. Create a new group or get
-            matched with existing groups.
-          </p>
-          <div className="flex gap-3 justify-center">
+      {groups.length === 0 && groupsInitialized ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Users className="h-6 w-6" />
+            </EmptyMedia>
+            <EmptyTitle>No Groups Yet</EmptyTitle>
+            <EmptyDescription>
+              You haven&apos;t joined any study groups yet. Create a new group
+              or get matched with existing groups.
+            </EmptyDescription>
+          </EmptyHeader>
+          <div className="flex gap-3 justify-center mt-4">
             <Button onClick={() => router.push("/dashboard")}>
               Get Matched
             </Button>
           </div>
-        </Card>
-      ) : (
+        </Empty>
+      ) : groups.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {groups.map((group) => (
             <Card
@@ -180,7 +203,7 @@ export default function GroupsPage() {
             </Card>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -18,6 +18,7 @@ interface GroupState {
   groups: UserGroup[];
   isLoading: boolean;
   isInitialized: boolean;
+  currentUserId: number | null; // Track which user's groups are loaded
 
   // Actions
   initialize: (userId: number) => Promise<void>;
@@ -28,20 +29,32 @@ interface GroupState {
   addGroup: (group: UserGroup) => void;
   removeGroup: (groupId: number) => void;
   updateGroup: (groupId: number, updates: Partial<UserGroup>) => void;
+  clearGroups: () => void;
 }
 
 export const useGroupStore = create<GroupState>((set, get) => ({
   groups: [],
   isLoading: false,
   isInitialized: false,
+  currentUserId: null,
 
   initialize: async (userId: number) => {
-    if (get().isInitialized && get().groups.length > 0) {
-      return; // Already initialized and has data
+    const state = get();
+    // If already initialized for this user, don't re-fetch
+    if (
+      state.isInitialized &&
+      state.currentUserId === userId &&
+      state.groups.length > 0
+    ) {
+      return;
+    }
+    // If user changed, clear groups first
+    if (state.currentUserId !== null && state.currentUserId !== userId) {
+      set({ groups: [], currentUserId: null, isInitialized: false });
     }
     set({ isLoading: true, isInitialized: false });
     await get().fetchUserGroups(userId);
-    set({ isLoading: false, isInitialized: true });
+    set({ isLoading: false, isInitialized: true, currentUserId: userId });
   },
 
   fetchUserGroups: async (userId: number) => {
@@ -75,50 +88,79 @@ export const useGroupStore = create<GroupState>((set, get) => ({
 
       if (memberError) {
         console.error("Error fetching user groups:", memberError);
-        set({ groups: [], isLoading: false });
+        set({ groups: [], isLoading: false, currentUserId: null });
         return;
       }
 
       if (!memberData || memberData.length === 0) {
-        set({ groups: [], isLoading: false });
+        set({ groups: [], isLoading: false, currentUserId: numericUserId });
         return;
       }
 
-      // Fetch group details for each group
-      const groupsWithDetails = await Promise.all(
-        memberData.map(async (member) => {
-          const { data: groupData, error: groupError } = await supabase
-            .from("groups")
-            .select("*")
-            .eq("id", member.group_id)
-            .single();
+      // Get all unique group IDs
+      const groupIds = [
+        ...new Set(
+          memberData
+            .map((member) => member.group_id)
+            .filter((id): id is number => id !== null)
+        ),
+      ];
 
-          if (groupError || !groupData) {
+      // Fetch all groups in a single query using 'in' operator
+      const { data: groupsData, error: groupsError } = await supabase
+        .from("groups")
+        .select("*")
+        .in("id", groupIds);
+
+      if (groupsError || !groupsData) {
+        console.error("Error fetching groups:", groupsError);
+        set({ groups: [], isLoading: false, currentUserId: null });
+        return;
+      }
+
+      // Create a map of group_id to member role
+      const memberRoleMap = new Map(
+        memberData.map((member) => [member.group_id, member.role])
+      );
+
+      // Fetch all member counts in parallel (optimized)
+      const memberCountPromises = groupIds.map(async (groupId) => {
+        const { count } = await supabase
+          .from("group_members")
+          .select("*", { count: "exact", head: true })
+          .eq("group_id", groupId);
+        return { groupId, count: count || 0 };
+      });
+
+      const memberCounts = await Promise.all(memberCountPromises);
+      const memberCountMap = new Map(
+        memberCounts.map(({ groupId, count }) => [groupId, count])
+      );
+
+      // Map the data to UserGroup format
+      const groupsWithDetails = groupsData
+        .map((groupData) => {
+          const userRole = memberRoleMap.get(groupData.id);
+          if (!userRole) {
             return null;
           }
 
-          // Get member count for this group
-          const { count: memberCount } = await supabase
-            .from("group_members")
-            .select("*", { count: "exact", head: true })
-            .eq("group_id", groupData.id);
-
           return {
             ...groupData,
-            member_count: memberCount || 0,
-            user_role: member.role,
+            member_count: memberCountMap.get(groupData.id) || 0,
+            user_role: userRole,
           };
         })
-      );
+        .filter((group): group is UserGroup => group !== null);
 
-      // Filter out null values and set groups
-      const validGroups = groupsWithDetails.filter(
-        (group): group is UserGroup => group !== null
-      );
-      set({ groups: validGroups, isLoading: false });
+      set({
+        groups: groupsWithDetails,
+        isLoading: false,
+        currentUserId: numericUserId,
+      });
     } catch (error) {
       console.error("Error fetching user groups:", error);
-      set({ groups: [], isLoading: false });
+      set({ groups: [], isLoading: false, currentUserId: null });
     }
   },
 
@@ -157,5 +199,8 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       ),
     }));
   },
-}));
 
+  clearGroups: () => {
+    set({ groups: [], currentUserId: null, isInitialized: false });
+  },
+}));

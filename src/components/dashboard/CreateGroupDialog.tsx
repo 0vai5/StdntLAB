@@ -46,7 +46,7 @@ export function CreateGroupDialog({
   onSubmit,
 }: CreateGroupDialogProps) {
   const router = useRouter();
-  const { user, authUser } = useAllStores();
+  const { user, authUser, refreshGroups } = useAllStores();
   const [isLoading, setIsLoading] = useState(false);
   const [tagInput, setTagInput] = useState("");
 
@@ -174,8 +174,13 @@ export function CreateGroupDialog({
       setTagInput("");
       onOpenChange(false);
 
+      // Refresh groups store
+      if (user?.id) {
+        await refreshGroups(Number(user.id));
+      }
+
       // Redirect to group page
-      router.push(`/dashboard/group/${newGroup.id}`);
+      router.push(`/group/${newGroup.id}/`);
     } catch (error) {
       toast.error("Failed to create group. Please try again.");
       console.error(error);

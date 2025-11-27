@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
 import { useTodoStore } from "./useTodoStore";
+import { useGroupStore } from "./useGroupStore";
 // import type { StoreApi } from "zustand";
 import { UserProfile } from "@/lib/types";
 import { User } from "@supabase/supabase-js";
@@ -58,12 +59,14 @@ export const useRootStore = create<RootStore>((_, __) => ({
 export const useAllStores = () => {
   const authStore = useAuthStore();
   const todoStore = useTodoStore();
+  const groupStore = useGroupStore();
   const rootStore = useRootStore();
 
   return {
     // Individual stores
     authStore,
     todoStore,
+    groupStore,
     rootStore,
 
     // Auth convenience accessors
@@ -77,6 +80,11 @@ export const useAllStores = () => {
     recentActivities: todoStore.recentActivities,
     todosLoading: todoStore.isLoading,
     todosInitialized: todoStore.isInitialized,
+
+    // Group convenience accessors
+    groups: groupStore.groups,
+    groupsLoading: groupStore.isLoading,
+    groupsInitialized: groupStore.isInitialized,
 
     // Auth Actions
     signOut: authStore.signOut,
@@ -97,5 +105,15 @@ export const useAllStores = () => {
     getTodosByGroup: todoStore.getTodosByGroup,
     getTodosByFilter: todoStore.getTodosByFilter,
     getRecentActivities: todoStore.getRecentActivities,
+
+    // Group Actions
+    initializeGroups: groupStore.initialize,
+    fetchUserGroups: groupStore.fetchUserGroups,
+    refreshGroups: groupStore.refreshGroups,
+    hasGroups: groupStore.hasGroups,
+    getGroupById: groupStore.getGroupById,
+    addGroup: groupStore.addGroup,
+    removeGroup: groupStore.removeGroup,
+    updateGroup: groupStore.updateGroup,
   };
 };

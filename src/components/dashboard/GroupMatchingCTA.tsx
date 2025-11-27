@@ -45,29 +45,6 @@ export function GroupMatchingCTA() {
   //   .eq('subject', userPreferences.subject)
   //   .eq('level', userPreferences.level)
   //   .limit(3)
-  const dummyMatchedGroups = [
-    {
-      id: "1",
-      title: "Advanced Mathematics Study Group",
-      avatar: undefined,
-      memberTotal: 12,
-      membersOnline: 5,
-    },
-    {
-      id: "2",
-      title: "Computer Science Fundamentals",
-      avatar: undefined,
-      memberTotal: 8,
-      membersOnline: 3,
-    },
-    {
-      id: "3",
-      title: "Data Structures & Algorithms",
-      avatar: undefined,
-      memberTotal: 15,
-      membersOnline: 7,
-    },
-  ];
 
   const handleGetMatched = async () => {
     if (!user || !authUser) {

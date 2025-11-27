@@ -1,17 +1,15 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
-import { useState } from "react";
+import { useRouter, usePathname, useParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  Calendar,
-  CheckSquare,
-  TrendingUp,
+  LayoutDashboard,
+  Users,
+  BookOpen,
   Settings,
   User,
   LogOut,
-  LayoutDashboard,
-  Users,
 } from "lucide-react";
 import {
   Sidebar,
@@ -42,31 +40,73 @@ import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAllStores } from "@/store";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 
-const navigationItems = [
-  {
-    title: "Dashboard",
-    icon: LayoutDashboard,
-    href: "/dashboard",
-  },
-  {
-    title: "My Groups",
-    icon: Users,
-    href: "/dashboard/groups",
-  },
-  {
-    title: "Todo",
-    icon: CheckSquare,
-    href: "/dashboard/todo",
-  },
-];
+interface Group {
+  id: number;
+  name: string;
+  description: string | null;
+}
 
-function AppSidebar() {
+function GroupSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const params = useParams();
   const { state } = useSidebar();
   const { user, signOut, isLoading } = useAllStores();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [group, setGroup] = useState<Group | null>(null);
+  const [isLoadingGroup, setIsLoadingGroup] = useState(true);
+
+  const groupId = params.id as string;
+
+  useEffect(() => {
+    const fetchGroup = async () => {
+      if (!groupId) return;
+
+      setIsLoadingGroup(true);
+      try {
+        const supabase = createClient();
+        const { data: groupData, error } = await supabase
+          .from("groups")
+          .select("id, name, description")
+          .eq("id", parseInt(groupId))
+          .single();
+
+        if (error || !groupData) {
+          console.error("Error fetching group:", error);
+          setGroup(null);
+        } else {
+          setGroup(groupData);
+        }
+      } catch (error) {
+        console.error("Error fetching group:", error);
+        setGroup(null);
+      } finally {
+        setIsLoadingGroup(false);
+      }
+    };
+
+    fetchGroup();
+  }, [groupId]);
+
+  const navigationItems = [
+    {
+      title: "Dashboard",
+      icon: LayoutDashboard,
+      href: `/group/${groupId}`,
+    },
+    {
+      title: "Members",
+      icon: Users,
+      href: `/group/${groupId}/members`,
+    },
+    {
+      title: "Material",
+      icon: BookOpen,
+      href: `/group/${groupId}/material`,
+    },
+  ];
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -103,6 +143,14 @@ function AppSidebar() {
 
   const isCollapsed = state === "collapsed";
 
+  // Check if current pathname matches a navigation item
+  const isActive = (href: string) => {
+    if (href === `/group/${groupId}`) {
+      return pathname === href;
+    }
+    return pathname.startsWith(href);
+  };
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -128,14 +176,42 @@ function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
+              {isLoadingGroup ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton disabled>
+                    <Skeleton className="h-4 w-4" />
+                    {!isCollapsed && <Skeleton className="h-4 w-20 ml-2" />}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : group ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild size="lg" className="mb-2">
+                    <div>
+                      <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
+                        <Users className="h-4 w-4" />
+                      </div>
+                      {!isCollapsed && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-semibold text-sm truncate">
+                            {group.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            Group
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : null}
               {navigationItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const active = isActive(item.href);
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
                       asChild
-                      isActive={isActive}
+                      isActive={active}
                       tooltip={item.title}
                     >
                       <Link href={item.href}>
@@ -262,14 +338,89 @@ function AppSidebar() {
   );
 }
 
-export default function DashboardLayout({
+export default function GroupLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { signOut } = useAllStores();
+  const params = useParams();
+  const { signOut, user, isLoading: isUserLoading } = useAllStores();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isCheckingMembership, setIsCheckingMembership] = useState(true);
+  const [isMember, setIsMember] = useState(false);
+
+  const groupId = params.id as string;
+
+  // Check if user is a valid member of the group
+  useEffect(() => {
+    const checkMembership = async () => {
+      // Wait for user to be loaded
+      if (isUserLoading) {
+        return;
+      }
+
+      // If no user, redirect to dashboard (auth guard should handle sign in, but redirect here for safety)
+      if (!user) {
+        router.push("/dashboard");
+        return;
+      }
+
+      if (!groupId) {
+        router.push("/dashboard");
+        return;
+      }
+
+      setIsCheckingMembership(true);
+
+      try {
+        const supabase = createClient();
+        const numericGroupId = parseInt(groupId);
+
+        if (isNaN(numericGroupId)) {
+          toast.error("Invalid group ID");
+          router.push("/dashboard");
+          return;
+        }
+
+        // Get numeric user ID
+        const numericUserId =
+          typeof user.id === "number" ? user.id : parseInt(user.id || "0");
+
+        if (!numericUserId || isNaN(numericUserId)) {
+          toast.error("User ID not found. Please refresh and try again.");
+          router.push("/dashboard");
+          return;
+        }
+
+        // Check if user is a member of the group
+        const { data: memberData, error: memberError } = await supabase
+          .from("group_members")
+          .select("id")
+          .eq("group_id", numericGroupId)
+          .eq("user_id", numericUserId)
+          .single();
+
+        if (memberError || !memberData) {
+          // User is not a member
+          toast.error("You are not a member of this group");
+          router.push("/dashboard");
+          return;
+        }
+
+        // User is a valid member
+        setIsMember(true);
+      } catch (error) {
+        console.error("Error checking membership:", error);
+        toast.error("Failed to verify group membership");
+        router.push("/dashboard");
+      } finally {
+        setIsCheckingMembership(false);
+      }
+    };
+
+    checkMembership();
+  }, [groupId, user, isUserLoading, router]);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -289,9 +440,28 @@ export default function DashboardLayout({
     }
   };
 
+  // Show loading state while checking membership or user loading
+  if (isCheckingMembership || isUserLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size="lg" />
+          <p className="text-sm text-muted-foreground">
+            Verifying group membership...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Only render if user is a valid member
+  if (!isMember) {
+    return null; // Redirect is handled in useEffect
+  }
+
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <GroupSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />

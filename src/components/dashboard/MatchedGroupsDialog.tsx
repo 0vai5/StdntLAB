@@ -37,7 +37,7 @@ export function MatchedGroupsDialog({
   groups,
 }: MatchedGroupsDialogProps) {
   const router = useRouter();
-  const { user, authUser } = useAllStores();
+  const { user, authUser, refreshGroups } = useAllStores();
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
 
   const handleJoinGroup = async (groupId: string) => {
@@ -94,7 +94,7 @@ export function MatchedGroupsDialog({
 
       if (existingMember) {
         toast.info("You are already a member of this group");
-        router.push(`/dashboard/group/${groupId}`);
+        router.push(`/group/${groupId}`);
         return;
       }
 
@@ -115,8 +115,14 @@ export function MatchedGroupsDialog({
       }
 
       toast.success("Successfully joined the group!");
+      
+      // Refresh groups store
+      if (user?.id) {
+        await refreshGroups(Number(user.id));
+      }
+      
       onOpenChange(false);
-      router.push(`/dashboard/group/${groupId}`);
+      router.push(`/group/${groupId}`);
     } catch (error) {
       console.error("Error joining group:", error);
       toast.error("Failed to join group. Please try again.");

@@ -31,6 +31,11 @@ export default function DashboardPage() {
     todosInitialized,
     initializeTodos,
     updateTodo,
+    groups,
+    groupsLoading,
+    groupsInitialized,
+    initializeGroups,
+    hasGroups,
   } = useAllStores();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const emptyFields = getEmptyFields(user);
@@ -42,6 +47,13 @@ export default function DashboardPage() {
       initializeTodos(Number(user.id));
     }
   }, [user?.id, todosInitialized, initializeTodos, todosLoading]);
+
+  // Initialize groups if user exists and groups are not initialized
+  useEffect(() => {
+    if (user?.id && !groupsLoading && !groupsInitialized) {
+      initializeGroups(Number(user.id));
+    }
+  }, [user?.id, groupsInitialized, initializeGroups, groupsLoading]);
 
   // Calculate progress - must be called before any conditional returns
   const progress = useMemo(() => {
@@ -203,8 +215,8 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Group Matching CTA */}
-      <GroupMatchingCTA />
+      {/* Group Matching CTA - Only show if user is not in any groups */}
+      {!groupsLoading && !hasGroups() && <GroupMatchingCTA />}
 
       {/* Progress */}
       <div className="space-y-2">

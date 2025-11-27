@@ -6,44 +6,88 @@ import { PreferencesModal } from "@/components/profile/PreferencesModal";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatActivityMessage } from "@/lib/utils/activity";
+import { Card } from "@/components/ui/card";
+import { DashboardTodosCard } from "@/components/dashboard/DashboardTodosCard";
 import {
   getEmptyFields,
   getProfileCompletionPercentage,
   isProfileComplete,
 } from "@/lib/utils/profile";
 import { useAllStores } from "@/store";
-import {
-  Activity,
-  CheckSquare,
-  Clock,
-  TrendingUp,
-  UserPlus,
-} from "lucide-react";
-import Link from "next/link";
+import { UserPlus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import type { TodoStatus, TodoPriority } from "@/lib/types/todo-enums";
+import { toast } from "sonner";
 
 export default function DashboardPage() {
   const {
     user,
     isLoading,
     todos,
-    recentActivities,
     todosLoading,
+    todosInitialized,
     initializeTodos,
-    fetchTodos,
-    getRecentActivities,
+    updateTodo,
   } = useAllStores();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const emptyFields = getEmptyFields(user);
   const profileComplete = isProfileComplete(user);
 
   useEffect(() => {
-    if (user?.id && !todosLoading) {
+    // Only fetch todos if user exists, not loading, and not already initialized
+    if (user?.id && !todosLoading && !todosInitialized) {
       initializeTodos(Number(user.id));
-      fetchTodos(Number(user.id), null);
     }
-  }, [user?.id, initializeTodos, fetchTodos, todosLoading]);
+  }, [user?.id, todosInitialized, initializeTodos, todosLoading]);
+
+  // Calculate progress - must be called before any conditional returns
+  const progress = useMemo(() => {
+    const total = todos.length;
+    const completed = todos.filter((t) => t.status === "completed").length;
+    return total > 0 ? Math.round((completed / total) * 100) : 0;
+  }, [todos]);
+
+  // Get and sort incomplete todos by due_date and priority - must be called before any conditional returns
+  const incompleteTodos = useMemo(() => {
+    const priorityOrder: Record<TodoPriority | "none", number> = {
+      high: 3,
+      medium: 2,
+      low: 1,
+      none: 0,
+    };
+
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+
+    // Filter: only show incomplete todos that are due today or have no due date
+    return todos
+      .filter((todo) => {
+        // Exclude completed todos
+        if (todo.status === "completed") return false;
+
+        // Include todos without a due date
+        if (!todo.due_date) return true;
+
+        // Include todos due today
+        const todoDateStr = new Date(todo.due_date).toISOString().split("T")[0];
+        return todoDateStr === todayStr;
+      })
+      .sort((a, b) => {
+        // First sort by due_date (todos with due date first, then nulls)
+        const aDate = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+        const bDate = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+
+        if (aDate !== bDate) {
+          return aDate - bDate;
+        }
+
+        // Then sort by priority (high > medium > low > none)
+        const aPriority = priorityOrder[a.priority || "none"];
+        const bPriority = priorityOrder[b.priority || "none"];
+
+        return bPriority - aPriority; // Higher priority first
+      });
+  }, [todos]);
 
   if (isLoading) {
     return (
@@ -52,23 +96,9 @@ export default function DashboardPage() {
           <Skeleton className="h-10 w-64" />
           <Skeleton className="h-6 w-96" />
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-lg border bg-card p-6 space-y-3">
-            <Skeleton className="h-6 w-32" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-          </div>
-          <div className="rounded-lg border bg-card p-6 space-y-3">
-            <Skeleton className="h-6 w-32" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-          </div>
-          <div className="rounded-lg border bg-card p-6 space-y-3">
-            <Skeleton className="h-6 w-32" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-          </div>
-        </div>
+        <Card className="p-6">
+          <Skeleton className="h-32 w-full" />
+        </Card>
       </div>
     );
   }
@@ -136,37 +166,28 @@ export default function DashboardPage() {
     );
   }
 
-  const stats = useMemo(() => {
-    const total = todos.length;
-    const completed = todos.filter((t) => t.status === "completed").length;
-    const pending = todos.filter((t) => t.status === "pending").length;
-    const inProgress = todos.filter((t) => t.status === "in_progress").length;
-    const completionRate =
-      total > 0 ? Math.round((completed / total) * 100) : 0;
-    return { total, completed, pending, inProgress, completionRate };
-  }, [todos]);
-
-  const upcomingTasks = useMemo(() => {
-    const now = new Date();
-    return todos
-      .filter((todo) => {
-        if (todo.status === "completed")
-          return false;
-        if (!todo.due_date) return false;
-        const dueDate = new Date(todo.due_date);
-        return dueDate >= now;
-      })
-      .sort((a, b) => {
-        const aDate = a.due_date ? new Date(a.due_date).getTime() : Infinity;
-        const bDate = b.due_date ? new Date(b.due_date).getTime() : Infinity;
-        return aDate - bDate;
-      })
-      .slice(0, 5);
-  }, [todos]);
-
-  const recentActivityList = useMemo(() => {
-    return getRecentActivities(5);
-  }, [recentActivities, getRecentActivities]);
+  const handleToggleTodo = async (
+    todoId: number,
+    currentStatus: TodoStatus
+  ) => {
+    const newStatus: TodoStatus =
+      currentStatus === "completed" ? "pending" : "completed";
+    try {
+      const result = await updateTodo(todoId, { status: newStatus });
+      if (result) {
+        toast.success(
+          newStatus === "completed"
+            ? "Todo completed!"
+            : "Todo marked as pending"
+        );
+      } else {
+        toast.error("Failed to update todo");
+      }
+    } catch (error) {
+      toast.error("An error occurred while updating todo");
+      console.error(error);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -174,129 +195,28 @@ export default function DashboardPage() {
         <h1 className="font-heading text-4xl font-bold text-foreground">
           Welcome 👋 {user?.name || "User"}
         </h1>
-        <p className="mt-2 text-muted-foreground">Here&apos;s your overview.</p>
+        <p className="mt-2 text-muted-foreground">
+          Here is All your gameplan for today followed by you progress.
+        </p>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Total Todos
-              </p>
-              <p className="text-2xl font-bold">{stats.total}</p>
-            </div>
-            <CheckSquare className="h-8 w-8 text-muted-foreground" />
-          </div>
+      {/* Progress */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Progress</span>
+          <span className="text-sm font-semibold text-primary">
+            {progress}%
+          </span>
         </div>
-        <div className="rounded-lg border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Completed
-              </p>
-              <p className="text-2xl font-bold text-green-600">
-                {stats.completed}
-              </p>
-            </div>
-            <TrendingUp className="h-8 w-8 text-green-600" />
-          </div>
-        </div>
-        <div className="rounded-lg border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                In Progress
-              </p>
-              <p className="text-2xl font-bold text-blue-600">
-                {stats.inProgress}
-              </p>
-            </div>
-            <Clock className="h-8 w-8 text-blue-600" />
-          </div>
-        </div>
-        <div className="rounded-lg border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Completion Rate
-              </p>
-              <p className="text-2xl font-bold">{stats.completionRate}%</p>
-            </div>
-            <Progress value={stats.completionRate} className="h-2 w-16" />
-          </div>
-        </div>
+        <Progress value={progress} className="h-3" />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Recent Activity */}
-        <div className="rounded-lg border bg-card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Recent Activity
-            </h3>
-            <Link href="/dashboard/todo">
-              <Button variant="ghost" size="sm">
-                View All
-              </Button>
-            </Link>
-          </div>
-          {recentActivityList.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No recent activity</p>
-          ) : (
-            <div className="space-y-3">
-              {recentActivityList.map((activity) => (
-                <div key={activity.id} className="text-sm">
-                  <p className="text-foreground">
-                    {formatActivityMessage(activity)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Upcoming Tasks */}
-        <div className="rounded-lg border bg-card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Upcoming Tasks
-            </h3>
-            <Link href="/dashboard/todo">
-              <Button variant="ghost" size="sm">
-                View All
-              </Button>
-            </Link>
-          </div>
-          {upcomingTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No upcoming tasks</p>
-          ) : (
-            <div className="space-y-3">
-              {upcomingTasks.map((todo) => (
-                <div key={todo.id} className="flex items-start gap-2 text-sm">
-                  <div className="mt-1 h-2 w-2 rounded-full bg-primary" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{todo.title}</p>
-                    {todo.due_date && (
-                      <p className="text-xs text-muted-foreground">
-                        Due{" "}
-                        {new Date(todo.due_date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Todos Card */}
+      <DashboardTodosCard
+        todos={incompleteTodos}
+        isLoading={todosLoading}
+        onToggleTodo={handleToggleTodo}
+      />
     </div>
   );
 }

@@ -76,6 +76,7 @@ export const useAllStores = () => {
     todos: todoStore.todos,
     recentActivities: todoStore.recentActivities,
     todosLoading: todoStore.isLoading,
+    todosInitialized: todoStore.isInitialized,
 
     // Auth Actions
     signOut: authStore.signOut,

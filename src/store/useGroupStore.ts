@@ -30,6 +30,7 @@ interface GroupState {
   removeGroup: (groupId: number) => void;
   updateGroup: (groupId: number, updates: Partial<UserGroup>) => void;
   clearGroups: () => void;
+  leaveGroup: (groupId: number, userId: number) => Promise<void>;
 }
 
 export const useGroupStore = create<GroupState>((set, get) => ({
@@ -202,5 +203,58 @@ export const useGroupStore = create<GroupState>((set, get) => ({
 
   clearGroups: () => {
     set({ groups: [], currentUserId: null, isInitialized: false });
+  },
+
+  leaveGroup: async (groupId: number, userId: number) => {
+    const supabase = createClient();
+    
+    try {
+      // Get numeric user ID if userId is a UUID string
+      let numericUserId: number;
+      if (typeof userId === "string") {
+        const { data: userData } = await supabase
+          .from("Users")
+          .select("id")
+          .eq("user_id", userId)
+          .single();
+
+        if (!userData) {
+          throw new Error("User not found");
+        }
+        numericUserId = userData.id;
+      } else {
+        numericUserId = userId;
+      }
+
+      // Find the group member record
+      const { data: memberData, error: memberError } = await supabase
+        .from("group_members")
+        .select("id")
+        .eq("group_id", groupId)
+        .eq("user_id", numericUserId)
+        .single();
+
+      if (memberError || !memberData) {
+        throw new Error("Member record not found");
+      }
+
+      // Remove member from group_members table
+      const { error: deleteError } = await supabase
+        .from("group_members")
+        .delete()
+        .eq("id", memberData.id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      // Update local state by removing the group
+      set((state) => ({
+        groups: state.groups.filter((group) => group.id !== groupId),
+      }));
+    } catch (error) {
+      console.error("Error leaving group:", error);
+      throw error;
+    }
   },
 }));

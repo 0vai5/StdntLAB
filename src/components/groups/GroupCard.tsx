@@ -1,12 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Users, ArrowRight } from "lucide-react";
+import { Users, ArrowRight, LogOut } from "lucide-react";
 import type { UserGroup } from "@/store/useGroupStore";
+import { useAllStores } from "@/store";
+import { LeaveGroupDialog } from "./LeaveGroupDialog";
 
 interface GroupCardProps {
   group: UserGroup;
@@ -14,6 +17,8 @@ interface GroupCardProps {
 
 export function GroupCard({ group }: GroupCardProps) {
   const router = useRouter();
+  const { user } = useAllStores();
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
 
   return (
     <Card
@@ -82,18 +87,44 @@ export function GroupCard({ group }: GroupCardProps) {
             {group.is_public ? "Public" : "Private"}
           </Badge>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            router.push(`/group/${group.id}`);
-          }}
-        >
-          View
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-2">
+          {group.user_role !== "owner" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsLeaveDialogOpen(true);
+              }}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/group/${group.id}`);
+            }}
+          >
+            View
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
       </div>
+
+      <LeaveGroupDialog
+        open={isLeaveDialogOpen}
+        onOpenChange={setIsLeaveDialogOpen}
+        group={group}
+        user={user}
+        onSuccess={() => {
+          // Group will be removed from state by the store
+          // No additional action needed here
+        }}
+      />
     </Card>
   );
 }

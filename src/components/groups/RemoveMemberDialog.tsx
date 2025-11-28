@@ -83,6 +83,42 @@ export function RemoveMemberDialog({
         return;
       }
 
+      const memberUserId = member.user_id;
+
+      // Get all quiz IDs for this group
+      const { data: quizzesData } = await supabase
+        .from("quizzes")
+        .select("id")
+        .eq("group_id", group.id);
+
+      const quizIds = quizzesData?.map((q) => q.id) || [];
+
+      // Delete all quiz submissions for this member and group's quizzes
+      if (quizIds.length > 0) {
+        const { error: submissionsError } = await supabase
+          .from("quiz_submission")
+          .delete()
+          .eq("user_id", memberUserId)
+          .in("quiz_id", quizIds);
+
+        if (submissionsError) {
+          console.error("Error deleting quiz submissions:", submissionsError);
+          // Continue even if this fails
+        }
+      }
+
+      // Delete all materials created by this member for this group
+      const { error: materialsError } = await supabase
+        .from("material")
+        .delete()
+        .eq("group_id", group.id)
+        .eq("user_id", memberUserId);
+
+      if (materialsError) {
+        console.error("Error deleting materials:", materialsError);
+        // Continue even if this fails
+      }
+
       // Remove member from group
       const { error: removeError } = await supabase
         .from("group_members")

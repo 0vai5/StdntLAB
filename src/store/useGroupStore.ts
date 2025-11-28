@@ -238,6 +238,40 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         throw new Error("Member record not found");
       }
 
+      // Get all quiz IDs for this group
+      const { data: quizzesData } = await supabase
+        .from("quizzes")
+        .select("id")
+        .eq("group_id", groupId);
+
+      const quizIds = quizzesData?.map((q) => q.id) || [];
+
+      // Delete all quiz submissions for this user and group's quizzes
+      if (quizIds.length > 0) {
+        const { error: submissionsError } = await supabase
+          .from("quiz_submission")
+          .delete()
+          .eq("user_id", numericUserId)
+          .in("quiz_id", quizIds);
+
+        if (submissionsError) {
+          console.error("Error deleting quiz submissions:", submissionsError);
+          // Continue even if this fails
+        }
+      }
+
+      // Delete all materials created by this user for this group
+      const { error: materialsError } = await supabase
+        .from("material")
+        .delete()
+        .eq("group_id", groupId)
+        .eq("user_id", numericUserId);
+
+      if (materialsError) {
+        console.error("Error deleting materials:", materialsError);
+        // Continue even if this fails
+      }
+
       // Remove member from group_members table
       const { error: deleteError } = await supabase
         .from("group_members")

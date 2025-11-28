@@ -19,6 +19,11 @@ const lato = Lato({
 export const metadata: Metadata = {
   title: "STDNTLAB - AI-powered student lab",
   description: "AI-powered student lab for smarter, collaborative studying.",
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

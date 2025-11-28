@@ -3,6 +3,7 @@
 import { useRouter, usePathname, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   LayoutDashboard,
   Users,
@@ -160,9 +161,14 @@ export function GroupSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg">
               <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <span className="font-bold text-sm">SL</span>
-                </div>
+                <Image
+                  src="/logo.png"
+                  alt="StdntLAB Logo"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 object-contain"
+                  priority
+                />
                 <div className="flex flex-col gap-0.5">
                   <span className="font-semibold text-sm">StdntLAB</span>
                   <span className="text-xs text-muted-foreground">

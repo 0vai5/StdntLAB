@@ -17,42 +17,69 @@ export function MatchingCountdown({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const startTimeRef = useRef<number | null>(null);
   const completedRef = useRef(false);
-  const needsResetRef = useRef(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Initialize start time
-    if (startTime !== undefined) {
-      startTimeRef.current = startTime;
-      needsResetRef.current = true;
-    } else if (startTimeRef.current === null) {
-      startTimeRef.current = Date.now();
+    // Clear any existing interval first
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
-  }, [startTime]);
 
-  useEffect(() => {
-    if (startTimeRef.current === null) return;
-
-    const interval = setInterval(() => {
-      // Reset if needed (when startTime prop changed)
-      if (needsResetRef.current) {
+    // Initialize or reset start time
+    if (startTime !== undefined) {
+      // If startTime prop is provided, use it (and reset if it changed)
+      if (startTimeRef.current !== startTime) {
+        startTimeRef.current = startTime;
         setElapsedSeconds(0);
         completedRef.current = false;
-        needsResetRef.current = false;
-        return;
       }
+    } else if (startTimeRef.current === null) {
+      // If no startTime prop and not initialized, use current time
+      startTimeRef.current = Date.now();
+    }
+    // If startTime is undefined but we already have a startTimeRef, keep it
 
-      const elapsed = Math.floor((Date.now() - startTimeRef.current!) / 1000);
-      setElapsedSeconds(elapsed);
-
-      // Call onComplete after the specified minimum duration
-      if (elapsed >= duration && !completedRef.current) {
+    // Calculate initial elapsed time immediately
+    if (startTimeRef.current !== null) {
+      const initialElapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      setElapsedSeconds(initialElapsed);
+      
+      // Check if already completed
+      if (initialElapsed >= duration && !completedRef.current) {
         completedRef.current = true;
         onComplete();
+        return;
       }
-    }, 1000); // Update every second
+    }
 
-    return () => clearInterval(interval);
-  }, [duration, onComplete]);
+    // Set up interval to update every second
+    if (startTimeRef.current !== null && !completedRef.current) {
+      intervalRef.current = setInterval(() => {
+        if (startTimeRef.current === null) return;
+
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        setElapsedSeconds(elapsed);
+
+        // Call onComplete after the specified minimum duration
+        if (elapsed >= duration && !completedRef.current) {
+          completedRef.current = true;
+          onComplete();
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
+        }
+      }, 1000);
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [duration, onComplete, startTime]);
 
   const formatTime = (totalSeconds: number) => {
     const minutes = Math.floor(totalSeconds / 60);

@@ -19,6 +19,8 @@ export default function TodoPage() {
     createTodo,
     updateTodo,
     deleteTodo,
+    isInitialized: authInitialized,
+    isLoading: authLoading,
   } = useAllStores();
 
   // Only show initializing if todos aren't already initialized
@@ -33,6 +35,11 @@ export default function TodoPage() {
 
   useEffect(() => {
     const initialize = async () => {
+      // Wait for auth to initialize before checking user
+      if (!authInitialized || authLoading) {
+        return;
+      }
+
       if (!user?.id) {
         setIsInitializing(false);
         return;
@@ -64,10 +71,10 @@ export default function TodoPage() {
       }
     };
 
-    if (user) {
+    if (authInitialized && !authLoading) {
       initialize();
     }
-  }, [user?.id, todosInitialized, initializeTodos, fetchTodos, user]);
+  }, [user?.id, todosInitialized, initializeTodos, fetchTodos, user, authInitialized, authLoading]);
 
   const handleCreateTodo = async (input: CreateTodoInput) => {
     if (!user?.id) {

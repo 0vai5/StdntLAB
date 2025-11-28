@@ -27,6 +27,7 @@ export default function GroupLayout({
     signOut,
     user,
     isLoading: isUserLoading,
+    isInitialized,
     groupsLoading,
     groupsInitialized,
     initializeGroups,
@@ -40,6 +41,10 @@ export default function GroupLayout({
 
   // Initialize groups if not already initialized
   useEffect(() => {
+    // Wait for auth to initialize before checking user
+    if (!isInitialized || isUserLoading) {
+      return;
+    }
     if (user?.id && !groupsLoading && !groupsInitialized) {
       const numericUserId =
         typeof user.id === "number" ? user.id : parseInt(user.id || "0");
@@ -47,13 +52,13 @@ export default function GroupLayout({
         initializeGroups(numericUserId);
       }
     }
-  }, [user?.id, groupsLoading, groupsInitialized, initializeGroups]);
+  }, [user?.id, groupsLoading, groupsInitialized, initializeGroups, isInitialized, isUserLoading]);
 
   // Check if user is a valid member of the group
   useEffect(() => {
     const checkMembership = async () => {
-      // Wait for user to be loaded
-      if (isUserLoading) {
+      // Wait for auth to initialize before checking user
+      if (!isInitialized || isUserLoading) {
         return;
       }
 
@@ -117,7 +122,7 @@ export default function GroupLayout({
     };
 
     checkMembership();
-  }, [groupId, user, isUserLoading, router]);
+  }, [groupId, user, isUserLoading, router, isInitialized]);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);

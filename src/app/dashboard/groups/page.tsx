@@ -21,6 +21,7 @@ export default function GroupsPage() {
   const {
     user,
     isLoading: isUserLoading,
+    isInitialized,
     groups,
     groupsLoading,
     groupsInitialized,
@@ -28,8 +29,12 @@ export default function GroupsPage() {
   } = useAllStores();
 
   useEffect(() => {
+    // Wait for auth to initialize before checking user
+    if (!isInitialized || isUserLoading) {
+      return;
+    }
     // Initialize groups only if user exists, not loading, and not already initialized
-    if (user?.id && !isUserLoading && !groupsLoading && !groupsInitialized) {
+    if (user?.id && !groupsLoading && !groupsInitialized) {
       const numericUserId =
         typeof user.id === "number" ? user.id : parseInt(user.id || "0");
       if (!isNaN(numericUserId)) {
@@ -39,6 +44,7 @@ export default function GroupsPage() {
   }, [
     user?.id,
     isUserLoading,
+    isInitialized,
     groupsLoading,
     groupsInitialized,
     initializeGroups,

@@ -26,6 +26,7 @@ export default function DashboardPage() {
   const {
     user,
     isLoading,
+    isInitialized,
     todos,
     todosLoading,
     todosInitialized,
@@ -42,18 +43,26 @@ export default function DashboardPage() {
   const profileComplete = isProfileComplete(user);
 
   useEffect(() => {
+    // Wait for auth to initialize before checking user
+    if (!isInitialized || isLoading) {
+      return;
+    }
     // Only fetch todos if user exists, not loading, and not already initialized
     if (user?.id && !todosLoading && !todosInitialized) {
       initializeTodos(Number(user.id));
     }
-  }, [user?.id, todosInitialized, initializeTodos, todosLoading]);
+  }, [user?.id, todosInitialized, initializeTodos, todosLoading, isInitialized, isLoading]);
 
   // Initialize groups if user exists and groups are not initialized
   useEffect(() => {
+    // Wait for auth to initialize before checking user
+    if (!isInitialized || isLoading) {
+      return;
+    }
     if (user?.id && !groupsLoading && !groupsInitialized) {
       initializeGroups(Number(user.id));
     }
-  }, [user?.id, groupsInitialized, initializeGroups, groupsLoading]);
+  }, [user?.id, groupsInitialized, initializeGroups, groupsLoading, isInitialized, isLoading]);
 
   // Calculate progress - must be called before any conditional returns
   const progress = useMemo(() => {

@@ -38,7 +38,7 @@ interface QuizSubmission {
 export default function GroupQuizzesPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAllStores();
+  const { user, isInitialized, isLoading: authLoading } = useAllStores();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [submissions, setSubmissions] = useState<Map<number, QuizSubmission>>(
     new Map()
@@ -51,6 +51,11 @@ export default function GroupQuizzesPage() {
 
   useEffect(() => {
     const fetchQuizzes = async () => {
+      // Wait for auth to initialize before checking user
+      if (!isInitialized || authLoading) {
+        return;
+      }
+
       if (!groupId || isNaN(numericGroupId)) {
         toast.error("Invalid group ID");
         router.push("/dashboard");
@@ -128,7 +133,7 @@ export default function GroupQuizzesPage() {
     };
 
     fetchQuizzes();
-  }, [groupId, numericGroupId, user, router]);
+  }, [groupId, numericGroupId, user, router, isInitialized, authLoading]);
 
   // Filter quizzes based on search query
   const filteredQuizzes = useMemo(() => {

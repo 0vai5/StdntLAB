@@ -29,7 +29,7 @@ interface Group {
 export default function GroupPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAllStores();
+  const { user, isInitialized, isLoading: authLoading } = useAllStores();
   const [group, setGroup] = useState<Group | null>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -181,10 +181,11 @@ export default function GroupPage() {
   }, [groupId, fetchGroupData]);
 
   useEffect(() => {
-    if (group && user) {
+    // Wait for auth to initialize before fetching quiz data
+    if (group && user && isInitialized && !authLoading) {
       fetchQuizData();
     }
-  }, [group, user, fetchQuizData]);
+  }, [group, user, fetchQuizData, isInitialized, authLoading]);
 
   if (isLoading) {
     return (

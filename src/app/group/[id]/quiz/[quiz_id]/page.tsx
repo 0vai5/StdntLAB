@@ -31,7 +31,7 @@ interface Quiz {
 export default function QuizPage() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAllStores();
+  const { user, isInitialized, isLoading: authLoading } = useAllStores();
   const { fetchTodos } = useTodoStore();
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -47,6 +47,11 @@ export default function QuizPage() {
 
   useEffect(() => {
     const fetchQuizData = async () => {
+      // Wait for auth to initialize before checking user
+      if (!isInitialized || authLoading) {
+        return;
+      }
+
       if (!groupId || !quizId || isNaN(numericGroupId) || isNaN(numericQuizId)) {
         toast.error("Invalid quiz ID");
         router.push(`/group/${groupId}`);
@@ -134,7 +139,7 @@ export default function QuizPage() {
     };
 
     fetchQuizData();
-  }, [groupId, quizId, numericGroupId, numericQuizId, user, router]);
+  }, [groupId, quizId, numericGroupId, numericQuizId, user, router, isInitialized, authLoading]);
 
   const handleAnswerChange = (questionId: number, answer: string) => {
     setAnswers((prev) => ({

@@ -52,7 +52,7 @@ export function MatchingCountdown({
     }, 1000); // Update every second
 
     return () => clearInterval(interval);
-  }, [duration, onComplete, startTime]);
+  }, [duration, onComplete]);
 
   const formatTime = (totalSeconds: number) => {
     const minutes = Math.floor(totalSeconds / 60);

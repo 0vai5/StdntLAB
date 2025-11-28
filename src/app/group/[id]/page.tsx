@@ -7,9 +7,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft, Users, BookOpen, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useAllStores } from "@/store";
+import { MaterialCreateDialog } from "@/components/material/MaterialCreateDialog";
+import { QuizLeaderboard } from "@/components/quiz/QuizLeaderboard";
+import { QuizDueCard } from "@/components/quiz/QuizDueCard";
 
 interface Group {
   id: number;
@@ -30,8 +33,14 @@ export default function GroupPage() {
   const [group, setGroup] = useState<Group | null>(null);
   const [memberCount, setMemberCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [latestQuiz, setLatestQuiz] = useState<any>(null);
+  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+  const [unattemptedQuiz, setUnattemptedQuiz] = useState<any>(null);
+  const [isLoadingQuizzes, setIsLoadingQuizzes] = useState(true);
 
   const groupId = params.id as string;
+  const numericGroupId = parseInt(groupId);
 
   const fetchGroupData = useCallback(async () => {
     setIsLoading(true);
@@ -76,10 +85,106 @@ export default function GroupPage() {
     }
   }, [groupId, router]);
 
+  const fetchQuizData = useCallback(async () => {
+    if (!user || !numericGroupId || isNaN(numericGroupId)) return;
+
+    setIsLoadingQuizzes(true);
+    try {
+      const supabase = createClient();
+      const numericUserId =
+        typeof user.id === "number" ? user.id : parseInt(user.id || "0");
+
+      // Fetch latest quiz for the group
+      const { data: quizzes, error: quizzesError } = await supabase
+        .from("quizzes")
+        .select("*")
+        .eq("group_id", numericGroupId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (quizzesError) {
+        console.error("Error fetching quizzes:", quizzesError);
+        setIsLoadingQuizzes(false);
+        return;
+      }
+
+      if (!quizzes || quizzes.length === 0) {
+        setLatestQuiz(null);
+        setLeaderboardData([]);
+        setUnattemptedQuiz(null);
+        setIsLoadingQuizzes(false);
+        return;
+      }
+
+      const latest = quizzes[0];
+      setLatestQuiz(latest);
+
+      // Fetch submissions for the latest quiz
+      const { data: submissions, error: submissionsError } = await supabase
+        .from("quiz_submission")
+        .select("*")
+        .eq("quiz_id", latest.id)
+        .order("percentage", { ascending: false })
+        .order("score", { ascending: false });
+
+      if (submissionsError) {
+        console.error("Error fetching submissions:", submissionsError);
+        setLeaderboardData([]);
+      } else {
+        // Fetch usernames for submissions
+        const userIds = [
+          ...new Set(submissions?.map((s) => s.user_id) || []),
+        ];
+        const { data: usersData } = await supabase
+          .from("Users")
+          .select("id, name, email")
+          .in("id", userIds);
+
+        const userMap = new Map(
+          (usersData || []).map((u) => [u.id, u.name || u.email])
+        );
+
+        const leaderboard = (submissions || []).map((sub) => ({
+          user_id: sub.user_id,
+          username: userMap.get(sub.user_id) || `User ${sub.user_id}`,
+          score: sub.score,
+          percentage: sub.percentage,
+          total_questions: sub.total_questions,
+        }));
+
+        setLeaderboardData(leaderboard);
+      }
+
+      // Check if user has attempted this quiz
+      const { data: userSubmission } = await supabase
+        .from("quiz_submission")
+        .select("id")
+        .eq("quiz_id", latest.id)
+        .eq("user_id", numericUserId)
+        .single();
+
+      if (!userSubmission) {
+        setUnattemptedQuiz(latest);
+      } else {
+        setUnattemptedQuiz(null);
+      }
+    } catch (error) {
+      console.error("Error fetching quiz data:", error);
+    } finally {
+      setIsLoadingQuizzes(false);
+    }
+  }, [user, numericGroupId]);
+
   useEffect(() => {
     if (!groupId) return;
     fetchGroupData();
   }, [groupId, fetchGroupData]);
+
+  useEffect(() => {
+    if (group && user) {
+      fetchQuizData();
+    }
+  }, [group, user, fetchQuizData]);
 
   if (isLoading) {
     return (
@@ -160,6 +265,56 @@ export default function GroupPage() {
           </div>
         </div>
       </Card>
+
+      {/* Quiz and Material Cards Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Quiz Due Card - Always shown */}
+        {!isLoadingQuizzes && (
+          <QuizDueCard 
+            quiz={unattemptedQuiz || null} 
+            groupId={numericGroupId} 
+          />
+        )}
+
+        {/* Material Upload Card */}
+        <Card className="p-6 border-primary/20 bg-primary/5">
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-lg bg-primary/10">
+              <BookOpen className="h-6 w-6 text-primary" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-lg mb-1">
+                Share Material with Group
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Have something to share with the members of the group? Feel free
+                to upload the material and help your group members learn together.
+              </p>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Material
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Quiz Leaderboard - Full Width */}
+      {!isLoadingQuizzes && latestQuiz && leaderboardData.length > 0 && (
+        <QuizLeaderboard
+          submissions={leaderboardData}
+          quizTitle={latestQuiz.title}
+        />
+      )}
+
+      {/* Create Material Dialog */}
+      {group && !isNaN(numericGroupId) && (
+        <MaterialCreateDialog
+          open={isCreateDialogOpen}
+          onOpenChange={setIsCreateDialogOpen}
+          groupId={numericGroupId}
+        />
+      )}
     </div>
   );
 }

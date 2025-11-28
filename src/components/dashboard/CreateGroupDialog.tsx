@@ -328,7 +328,7 @@ export function CreateGroupDialog({
             </Label>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button
               type="button"
               variant="outline"

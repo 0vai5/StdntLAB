@@ -1,6 +1,7 @@
 import { useAuthStore } from "./useAuthStore";
 import { useTodoStore } from "./useTodoStore";
 import { useGroupStore } from "./useGroupStore";
+import { useMaterialStore } from "./useMaterialStore";
 import { useRootStore, useAllStores } from "./useRootStore";
 
 /**
@@ -12,6 +13,7 @@ export const useStore = () => {
     auth: useAuthStore,
     todo: useTodoStore,
     group: useGroupStore,
+    material: useMaterialStore,
     root: useRootStore,
   };
 };
@@ -25,14 +27,16 @@ export const useStoreSelector = <T>(
     auth: ReturnType<typeof useAuthStore>;
     todo: ReturnType<typeof useTodoStore>;
     group: ReturnType<typeof useGroupStore>;
+    material: ReturnType<typeof useMaterialStore>;
     root: ReturnType<typeof useRootStore>;
   }) => T
 ): T => {
   const authStore = useAuthStore();
   const todoStore = useTodoStore();
   const groupStore = useGroupStore();
+  const materialStore = useMaterialStore();
   const rootStore = useRootStore();
-  return selector({ auth: authStore, todo: todoStore, group: groupStore, root: rootStore });
+  return selector({ auth: authStore, todo: todoStore, group: groupStore, material: materialStore, root: rootStore });
 };
 
 /**
@@ -49,6 +53,9 @@ export const stores = {
   get group() {
     return useGroupStore.getState();
   },
+  get material() {
+    return useMaterialStore.getState();
+  },
   get root() {
     return useRootStore.getState();
   },
@@ -63,6 +70,7 @@ export const subscribeToAllStores = (
     auth: ReturnType<typeof useAuthStore>;
     todo: ReturnType<typeof useTodoStore>;
     group: ReturnType<typeof useGroupStore>;
+    material: ReturnType<typeof useMaterialStore>;
     root: ReturnType<typeof useRootStore>;
   }) => void
 ) => {
@@ -71,6 +79,7 @@ export const subscribeToAllStores = (
       auth: authState,
       todo: useTodoStore.getState(),
       group: useGroupStore.getState(),
+      material: useMaterialStore.getState(),
       root: useRootStore.getState(),
     });
   });
@@ -80,6 +89,7 @@ export const subscribeToAllStores = (
       auth: useAuthStore.getState(),
       todo: todoState,
       group: useGroupStore.getState(),
+      material: useMaterialStore.getState(),
       root: useRootStore.getState(),
     });
   });
@@ -89,6 +99,17 @@ export const subscribeToAllStores = (
       auth: useAuthStore.getState(),
       todo: useTodoStore.getState(),
       group: groupState,
+      material: useMaterialStore.getState(),
+      root: useRootStore.getState(),
+    });
+  });
+
+  const unsubscribeMaterial = useMaterialStore.subscribe((materialState) => {
+    callback({
+      auth: useAuthStore.getState(),
+      todo: useTodoStore.getState(),
+      group: useGroupStore.getState(),
+      material: materialState,
       root: useRootStore.getState(),
     });
   });
@@ -98,6 +119,7 @@ export const subscribeToAllStores = (
       auth: useAuthStore.getState(),
       todo: useTodoStore.getState(),
       group: useGroupStore.getState(),
+      material: useMaterialStore.getState(),
       root: rootState,
     });
   });
@@ -106,6 +128,7 @@ export const subscribeToAllStores = (
     unsubscribeAuth();
     unsubscribeTodo();
     unsubscribeGroup();
+    unsubscribeMaterial();
     unsubscribeRoot();
   };
 };
@@ -114,4 +137,5 @@ export const subscribeToAllStores = (
 export { useAuthStore } from "./useAuthStore";
 export { useTodoStore } from "./useTodoStore";
 export { useGroupStore } from "./useGroupStore";
+export { useMaterialStore } from "./useMaterialStore";
 export { useRootStore, useAllStores } from "./useRootStore";

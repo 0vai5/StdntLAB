@@ -116,7 +116,7 @@ export function PreferencesModal({
           formRef={formRef}
         />
 
-        <DialogFooter>
+        <DialogFooter className="gap-2">
           <Button
             type="button"
             variant="outline"

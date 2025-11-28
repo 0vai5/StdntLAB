@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
+  FileQuestion,
   Settings,
   User,
   LogOut,
@@ -101,6 +102,11 @@ export function GroupSidebar() {
       title: "Material",
       icon: BookOpen,
       href: `/group/${groupId}/material`,
+    },
+    {
+      title: "Quizzes",
+      icon: FileQuestion,
+      href: `/group/${groupId}/quizzes`,
     },
   ];
 

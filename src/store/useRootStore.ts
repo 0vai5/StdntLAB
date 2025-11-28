@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
 import { useTodoStore } from "./useTodoStore";
 import { useGroupStore } from "./useGroupStore";
+import { useMaterialStore } from "./useMaterialStore";
 // import type { StoreApi } from "zustand";
 import { UserProfile } from "@/lib/types";
 import { User } from "@supabase/supabase-js";
@@ -23,9 +24,7 @@ interface RootStore {
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
   fetchUserProfile: () => Promise<void>;
-  updateUserProfile: (
-    data: Partial<UserProfile>
-  ) => Promise<void>;
+  updateUserProfile: (data: Partial<UserProfile>) => Promise<void>;
 }
 
 export const useRootStore = create<RootStore>((_, __) => ({
@@ -60,6 +59,7 @@ export const useAllStores = () => {
   const authStore = useAuthStore();
   const todoStore = useTodoStore();
   const groupStore = useGroupStore();
+  const materialStore = useMaterialStore();
   const rootStore = useRootStore();
 
   return {
@@ -67,6 +67,7 @@ export const useAllStores = () => {
     authStore,
     todoStore,
     groupStore,
+    materialStore,
     rootStore,
 
     // Auth convenience accessors
@@ -85,6 +86,11 @@ export const useAllStores = () => {
     groups: groupStore.groups,
     groupsLoading: groupStore.isLoading,
     groupsInitialized: groupStore.isInitialized,
+
+    // Material convenience accessors
+    groupMaterial: materialStore.groupMaterial,
+    materialsLoading: materialStore.isLoading,
+    materialsInitialized: materialStore.isInitialized,
 
     // Auth Actions
     signOut: authStore.signOut,
@@ -115,5 +121,14 @@ export const useAllStores = () => {
     addGroup: groupStore.addGroup,
     removeGroup: groupStore.removeGroup,
     updateGroup: groupStore.updateGroup,
+
+    // Material Actions
+    initializeMaterials: materialStore.initialize,
+    fetchGroupMaterials: materialStore.fetchGroupMaterials,
+    refreshGroupMaterials: materialStore.refreshGroupMaterials,
+    clearMaterials: materialStore.clearMaterials,
+    createMaterial: materialStore.createMaterial,
+    updateMaterial: materialStore.updateMaterial,
+    deleteMaterial: materialStore.deleteMaterial,
   };
 };

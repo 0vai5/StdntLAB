@@ -68,31 +68,86 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         numericUserId = userId;
       }
 
-      // If groupId is explicitly null, fetch only personal todos
+      // If groupId is explicitly null, fetch personal todos AND group todos
+      // Group todos should be shown with completion status from todo_completions
       if (groupId === null) {
-        const { data, error } = await supabase
+        // Fetch personal todos
+        const { data: personalTodosData, error: personalError } = await supabase
           .from("Todos")
           .select("*")
           .eq("user_id", numericUserId)
           .is("group_id", null)
           .order("created_at", { ascending: false });
 
-        if (error) {
-          console.error("Error fetching todos:", error);
+        if (personalError) {
+          console.error("Error fetching todos:", personalError);
           set({ todos: [], isLoading: false });
           return;
         }
 
-        const mappedTodos = (data || []).map((todo: Todo) => ({
-          ...todo,
-          date: todo.due_date || null,
-        }));
+        // Fetch group todos where user is a member
+        const { data: memberData } = await supabase
+          .from("group_members")
+          .select("group_id")
+          .eq("user_id", numericUserId);
+
+        const userGroupIds = memberData
+          ? memberData
+              .map((m) => m.group_id)
+              .filter((id): id is number => id !== null)
+          : [];
+
+        let groupTodosData: Todo[] = [];
+        if (userGroupIds.length > 0) {
+          const { data: groupTodos, error: groupError } = await supabase
+            .from("Todos")
+            .select("*")
+            .in("group_id", userGroupIds)
+            .order("created_at", { ascending: false });
+
+          if (!groupError && groupTodos) {
+            groupTodosData = groupTodos;
+          }
+        }
+
+        // Fetch completed todo IDs from todo_completions
+        const { data: completedTodosData } = await supabase
+          .from("todo_completions")
+          .select("todo_id")
+          .eq("user_id", numericUserId)
+          .eq("completed", true);
+
+        const completedTodoIds = new Set(
+          (completedTodosData || []).map((c) => c.todo_id)
+        );
+
+        // For personal todos: filter out completed ones
+        // For group todos: include them but mark as completed based on todo_completions
+        const filteredPersonalTodos = (personalTodosData || []).filter(
+          (todo) => !completedTodoIds.has(todo.id)
+        );
+
+        // Combine personal and group todos
+        const allTodos = [...filteredPersonalTodos, ...groupTodosData];
+
+        const mappedTodos = allTodos.map((todo: Todo) => {
+          // For group todos, check if they're completed via todo_completions
+          const isCompleted =
+            todo.group_id !== null && completedTodoIds.has(todo.id);
+          return {
+            ...todo,
+            date: todo.due_date || null,
+            // Override status for group todos based on todo_completions
+            status: isCompleted ? ("completed" as TodoStatus) : todo.status,
+          };
+        });
 
         set({ todos: mappedTodos || [], isLoading: false });
         return;
       }
 
       // If groupId is specified, fetch todos for that group
+      // Show all group todos, but mark completion status from todo_completions
       if (groupId !== undefined && groupId !== null) {
         const { data, error } = await supabase
           .from("Todos")
@@ -106,10 +161,27 @@ export const useTodoStore = create<TodoState>((set, get) => ({
           return;
         }
 
-        const mappedTodos = (data || []).map((todo: Todo) => ({
-          ...todo,
-          date: todo.due_date || null,
-        }));
+        // Fetch completed todo IDs from todo_completions
+        const { data: completedTodosData } = await supabase
+          .from("todo_completions")
+          .select("todo_id")
+          .eq("user_id", numericUserId)
+          .eq("completed", true);
+
+        const completedTodoIds = new Set(
+          (completedTodosData || []).map((c) => c.todo_id)
+        );
+
+        // Don't filter out completed group todos - show them with completion status
+        const mappedTodos = (data || []).map((todo: Todo) => {
+          const isCompleted = completedTodoIds.has(todo.id);
+          return {
+            ...todo,
+            date: todo.due_date || null,
+            // Override status based on todo_completions
+            status: isCompleted ? ("completed" as TodoStatus) : todo.status,
+          };
+        });
 
         set({ todos: mappedTodos || [], isLoading: false });
         return;
@@ -145,8 +217,24 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         console.error("Error fetching personal todos:", personalError);
       }
 
+      // Fetch completed todo IDs from todo_completions
+      const { data: completedTodosData } = await supabase
+        .from("todo_completions")
+        .select("todo_id")
+        .eq("user_id", numericUserId)
+        .eq("completed", true);
+
+      const completedTodoIds = new Set(
+        (completedTodosData || []).map((c) => c.todo_id)
+      );
+
+      // Filter out completed todos from personal todos
+      const filteredPersonalTodos = (personalTodos || []).filter(
+        (todo) => !completedTodoIds.has(todo.id)
+      );
+
       // Fetch group todos where user is a member
-      let groupTodos: any[] = [];
+      let groupTodos: Todo[] = [];
       if (userGroupIds.length > 0) {
         const { data: groupTodosData, error: groupTodosError } = await supabase
           .from("Todos")
@@ -161,8 +249,13 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         }
       }
 
+      // Filter out completed todos from group todos
+      const filteredGroupTodos = (groupTodos || []).filter(
+        (todo) => !completedTodoIds.has(todo.id)
+      );
+
       // Combine and map todos
-      const allTodos = [...(personalTodos || []), ...groupTodos];
+      const allTodos = [...filteredPersonalTodos, ...filteredGroupTodos];
       const mappedTodos = allTodos.map((todo: Todo) => ({
         ...todo,
         date: todo.due_date || null,
@@ -247,7 +340,70 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     userId?: number
   ) => {
     const supabase = createClient();
+    const todo = get().todos.find((t) => t.id === todoId);
 
+    // For group todos, if updating status, use todo_completions
+    if (todo && todo.group_id !== null && input.status !== undefined) {
+      const numericUserId = userId || todo.user_id;
+
+      try {
+        if (input.status === "completed") {
+          // Check if completion already exists
+          const { data: existingCompletion } = await supabase
+            .from("todo_completions")
+            .select("id")
+            .eq("todo_id", todoId)
+            .eq("user_id", numericUserId)
+            .single();
+
+          if (!existingCompletion) {
+            // Create todo_completions entry
+            const { error: completionError } = await supabase
+              .from("todo_completions")
+              .insert({
+                todo_id: todoId,
+                user_id: numericUserId,
+                completed_at: new Date().toISOString(),
+                completed: true,
+              });
+
+            if (completionError) {
+              console.error("Error creating todo completion:", completionError);
+              return null;
+            }
+          }
+        } else {
+          // Remove todo_completions entry
+          const { error: deleteError } = await supabase
+            .from("todo_completions")
+            .delete()
+            .eq("todo_id", todoId)
+            .eq("user_id", numericUserId);
+
+          if (deleteError) {
+            console.error("Error deleting todo completion:", deleteError);
+            return null;
+          }
+        }
+
+        // Update local state (don't update database status for group todos)
+        const updatedTodo: Todo = {
+          ...todo,
+          ...input,
+          status: input.status || todo.status,
+        };
+        set((state) => ({
+          todos: state.todos.map((t) => (t.id === todoId ? updatedTodo : t)),
+        }));
+
+        return updatedTodo;
+      } catch (error) {
+        console.error("Error updating group todo:", error);
+        return null;
+      }
+    }
+
+    // For personal todos or non-status updates for group todos, proceed normally
     try {
       // Get the current todo to check if status is changing to completed
       const currentTodo = get().todos.find((t) => t.id === todoId);
@@ -258,8 +414,11 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       if (input.title !== undefined) updateData.title = input.title;
       if (input.description !== undefined)
         updateData.description = input.description;
-      if (input.due_date !== undefined) updateData.due_date = input.due_date; // Map 'date' to 'due_date' for database
-      if (input.status !== undefined) updateData.status = input.status;
+      if (input.due_date !== undefined) updateData.due_date = input.due_date;
+      // For group todos, don't update status in database (handled via todo_completions)
+      if (input.status !== undefined && (!todo || todo.group_id === null)) {
+        updateData.status = input.status;
+      }
       if (input.type !== undefined) updateData.type = input.type;
       if (input.priority !== undefined) updateData.priority = input.priority;
       if (input.group_id !== undefined) updateData.group_id = input.group_id;
@@ -279,8 +438,8 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         return null;
       }
 
-      // If completing the todo, create a completion record
-      if (isCompleting) {
+      // If completing a personal todo, create a completion record
+      if (isCompleting && currentTodo && currentTodo.group_id === null) {
         // Use provided userId, or fall back to todo's user_id (creator)
         let numericUserId: number | undefined = userId;
 
@@ -297,8 +456,6 @@ export const useTodoStore = create<TodoState>((set, get) => ({
               user_id: numericUserId,
               completed_at: completedAt,
               completed: true,
-              created_at: completedAt,
-              updated_at: completedAt,
             });
 
           if (completionError) {
@@ -309,9 +466,15 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       }
 
       // Map database 'due_date' to TypeScript 'date' field
+      // For group todos, preserve the status from input (not from database)
       const updatedTodo: Todo = {
         ...data,
         date: data.due_date || null,
+        // If it's a group todo and status was updated, use the input status
+        status:
+          todo && todo.group_id !== null && input.status !== undefined
+            ? input.status
+            : data.status,
       };
       set((state) => ({
         todos: state.todos.map((todo) =>
@@ -375,8 +538,65 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   },
 
   toggleTodoStatus: async (todoId: number, status: TodoStatus) => {
-    const result = await get().updateTodo(todoId, { status });
-    return result !== null;
+    const supabase = createClient();
+    const todo = get().todos.find((t) => t.id === todoId);
+
+    if (!todo) {
+      return false;
+    }
+
+    // For group todos, use todo_completions instead of updating todo status
+    if (todo.group_id !== null) {
+      try {
+        // Get current user ID from the first todo (assuming all todos are for same user)
+        const numericUserId = todo.user_id;
+
+        if (status === "completed") {
+          // Create todo_completions entry
+          const { error: completionError } = await supabase
+            .from("todo_completions")
+            .insert({
+              todo_id: todoId,
+              user_id: numericUserId,
+              completed_at: new Date().toISOString(),
+              completed: true,
+            });
+
+          if (completionError) {
+            console.error("Error creating todo completion:", completionError);
+            return false;
+          }
+        } else {
+          // Remove todo_completions entry
+          const { error: deleteError } = await supabase
+            .from("todo_completions")
+            .delete()
+            .eq("todo_id", todoId)
+            .eq("user_id", numericUserId);
+
+          if (deleteError) {
+            console.error("Error deleting todo completion:", deleteError);
+            return false;
+          }
+        }
+
+        // Update local state
+        set((state) => ({
+          todos: state.todos.map((t) =>
+            t.id === todoId ? { ...t, status } : t
+          ),
+        }));
+
+        return true;
+      } catch (error) {
+        console.error("Error toggling group todo status:", error);
+        return false;
+      }
+    } else {
+      // For personal todos, update status normally
+      const result = await get().updateTodo(todoId, { status });
+      return result !== null;
+    }
   },
 
   getTodosByGroup: (groupId: number) => {

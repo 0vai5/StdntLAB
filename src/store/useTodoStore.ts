@@ -121,23 +121,18 @@ export const useTodoStore = create<TodoState>((set, get) => ({
           (completedTodosData || []).map((c) => c.todo_id)
         );
 
-        // For personal todos: filter out completed ones
-        // For group todos: include them but mark as completed based on todo_completions
-        const filteredPersonalTodos = (personalTodosData || []).filter(
-          (todo) => !completedTodoIds.has(todo.id)
-        );
-
-        // Combine personal and group todos
-        const allTodos = [...filteredPersonalTodos, ...groupTodosData];
+        // Show ALL todos (both completed and pending) for dashboard
+        // Personal todos: mark completion based on todo_completions
+        // Group todos: mark completion based on todo_completions
+        const allTodos = [...(personalTodosData || []), ...groupTodosData];
 
         const mappedTodos = allTodos.map((todo: Todo) => {
-          // For group todos, check if they're completed via todo_completions
-          const isCompleted =
-            todo.group_id !== null && completedTodoIds.has(todo.id);
+          // Check if todo is completed via todo_completions (for both personal and group)
+          const isCompleted = completedTodoIds.has(todo.id);
           return {
             ...todo,
             date: todo.due_date || null,
-            // Override status for group todos based on todo_completions
+            // Override status based on todo_completions for both personal and group todos
             status: isCompleted ? ("completed" as TodoStatus) : todo.status,
           };
         });
@@ -228,11 +223,6 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         (completedTodosData || []).map((c) => c.todo_id)
       );
 
-      // Filter out completed todos from personal todos
-      const filteredPersonalTodos = (personalTodos || []).filter(
-        (todo) => !completedTodoIds.has(todo.id)
-      );
-
       // Fetch group todos where user is a member
       let groupTodos: Todo[] = [];
       if (userGroupIds.length > 0) {
@@ -249,17 +239,20 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         }
       }
 
-      // Filter out completed todos from group todos
-      const filteredGroupTodos = (groupTodos || []).filter(
-        (todo) => !completedTodoIds.has(todo.id)
-      );
-
-      // Combine and map todos
-      const allTodos = [...filteredPersonalTodos, ...filteredGroupTodos];
-      const mappedTodos = allTodos.map((todo: Todo) => ({
-        ...todo,
-        date: todo.due_date || null,
-      }));
+      // Show ALL todos (both completed and pending) for dashboard
+      // Personal todos: mark completion based on todo_completions
+      // Group todos: mark completion based on todo_completions
+      const allTodos = [...(personalTodos || []), ...groupTodos];
+      const mappedTodos = allTodos.map((todo: Todo) => {
+        // Check if todo is completed via todo_completions
+        const isCompleted = completedTodoIds.has(todo.id);
+        return {
+          ...todo,
+          date: todo.due_date || null,
+          // Override status based on todo_completions for both personal and group todos
+          status: isCompleted ? ("completed" as TodoStatus) : todo.status,
+        };
+      });
 
       set({ todos: mappedTodos || [], isLoading: false });
     } catch (error) {

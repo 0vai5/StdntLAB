@@ -2,7 +2,7 @@ import { useAuthStore } from "./useAuthStore";
 import { useTodoStore } from "./useTodoStore";
 import { useGroupStore } from "./useGroupStore";
 import { useMaterialStore } from "./useMaterialStore";
-import { useRootStore, useAllStores } from "./useRootStore";
+import { useRootStore } from "./useRootStore";
 
 /**
  * Root store that provides access to all Zustand stores

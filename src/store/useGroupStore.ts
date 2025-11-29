@@ -346,7 +346,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
           // Match subjects (highest weight)
           if (userProfile.subjects && userProfile.subjects.length > 0) {
             const matchingSubjects = userProfile.subjects.filter((subject) =>
-              groupTags.some((tag) => tag.toLowerCase().includes(subject.toLowerCase()))
+              groupTags.some((tag: string) => tag.toLowerCase().includes(subject.toLowerCase()))
             );
             matchScore += matchingSubjects.length * 10;
           }
@@ -354,7 +354,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
           // Match education level
           if (userProfile.education_level && groupTags.length > 0) {
             const educationLevelLower = userProfile.education_level.toLowerCase();
-            const hasEducationMatch = groupTags.some((tag) =>
+            const hasEducationMatch = groupTags.some((tag: string) =>
               tag.toLowerCase().includes(educationLevelLower)
             );
             if (hasEducationMatch) matchScore += 5;
@@ -363,7 +363,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
           // Match study style
           if (userProfile.study_style && groupTags.length > 0) {
             const studyStyleLower = userProfile.study_style.toLowerCase();
-            const hasStyleMatch = groupTags.some((tag) =>
+            const hasStyleMatch = groupTags.some((tag: string) =>
               tag.toLowerCase().includes(studyStyleLower)
             );
             if (hasStyleMatch) matchScore += 3;

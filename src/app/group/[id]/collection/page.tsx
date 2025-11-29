@@ -27,6 +27,7 @@ interface GroupFile {
   user_id: number;
   group_id: number;
   file_id: string;
+  path: string;
   file_name: string;
   mimetype: string;
   size: number;
@@ -224,10 +225,12 @@ export default function GroupCollectionPage() {
                 onDelete={handleFileDeleted}
                 onRefetch={refetchFiles}
                 canDelete={
-                  user?.id &&
-                  (typeof user.id === "number"
-                    ? user.id
-                    : parseInt(user.id || "0")) === file.user_id
+                  !!(
+                    user?.id &&
+                    (typeof user.id === "number"
+                      ? user.id
+                      : parseInt(user.id || "0")) === file.user_id
+                  )
                 }
               />
             ))}

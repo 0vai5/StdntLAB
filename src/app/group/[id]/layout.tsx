@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { useAllStores } from "@/store";
+import { useAllStores, useGroupStore } from "@/store";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { GroupSidebar } from "@/components/sidebar/GroupSidebar";
@@ -116,8 +116,8 @@ export default function GroupLayout({
           
           while ((!groupsInitialized || groupsLoading) && attempts < maxAttempts) {
             await new Promise((resolve) => setTimeout(resolve, 100));
-            const state = useAllStores.getState();
-            if (state.groupsInitialized && !state.groupsLoading) {
+            const state = useGroupStore.getState();
+            if (state.isInitialized && !state.isLoading) {
               const userGroup = state.groups.find((g) => g.id === numericGroupId);
               if (userGroup) {
                 setIsMember(true);

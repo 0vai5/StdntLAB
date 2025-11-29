@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect } from "react";
@@ -88,7 +89,6 @@ interface PreferencesFormProps {
 export function PreferencesForm({
   user,
   onSubmit,
-  showAllFields = false,
   showNameField = true, // Default to showing name field
   disabled = false,
   onFormChange,

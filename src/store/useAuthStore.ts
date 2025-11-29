@@ -180,13 +180,63 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateUserProfile: async (data: Partial<UserProfile>) => {
     const supabase = createClient();
     const currentUser = get().user;
+    const authUser = get().authUser;
 
-    if (!currentUser?.user_id) {
+    if (!currentUser?.user_id && !authUser?.id) {
       throw new Error("User not found");
     }
 
+    const userId = currentUser?.user_id || authUser?.id;
+    if (!userId) {
+      throw new Error("User ID not found");
+    }
+
+    // Get email from current user or auth user
+    const email = currentUser?.email || authUser?.email;
+    if (!email) {
+      throw new Error("User email not found");
+    }
+
+    // Check if user record exists in database
+    const { data: existingUser, error: fetchError } = await supabase
+      .from("Users")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
+
+    // If user doesn't exist, create it first with basic info
+    if (!existingUser) {
+      const name = 
+        data.name || 
+        currentUser?.name || 
+        authUser?.user_metadata?.name || 
+        authUser?.email?.split("@")[0] || 
+        "";
+
+      const { error: insertError } = await supabase
+        .from("Users")
+        .insert({
+          user_id: userId,
+          email: email,
+          name: name,
+        });
+
+      if (insertError) {
+        throw new Error(`Failed to create user record: ${insertError.message}`);
+      }
+    }
+
     // Build update object - only include fields that are actually being updated
-    const updateData: Record<string, any> = {
+    const updateData: {
+      updated_at: string;
+      name?: string;
+      timezone?: string | null;
+      days_of_week?: string[] | null;
+      study_times?: string[] | null;
+      education_level?: string | null;
+      subjects?: string[] | null;
+      study_style?: string | null;
+    } = {
       updated_at: new Date().toISOString(),
     };
 
@@ -203,14 +253,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const updatedUser: UserProfile = {
       ...currentUser,
       ...data,
+      user_id: userId,
+      email: email,
     };
     set({ user: updatedUser });
 
-    // Update database
+    // Update database (now we know the record exists)
     const { error } = await supabase
       .from("Users")
       .update(updateData)
-      .eq("user_id", currentUser.user_id);
+      .eq("user_id", userId);
 
     if (error) {
       // Revert optimistic update on error

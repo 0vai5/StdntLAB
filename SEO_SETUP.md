@@ -139,3 +139,4 @@ If favicon is not showing on Vercel:
 
 The `icon.tsx` file in `src/app/` will automatically generate an icon, but having static files in `public/` is more reliable.
 
+

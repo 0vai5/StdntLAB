@@ -289,7 +289,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           .single();
 
         if (!userData) {
-          set({ allUserSessions: [], allUserSessionsLoading: false });
+          set({ 
+            allUserSessions: [], 
+            allUserSessionsLoading: false,
+            allUserSessionsInitialized: true,
+          });
           return;
         }
         numericUserId = userData.id;
@@ -304,7 +308,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         .eq("user_id", numericUserId);
 
       if (memberError || !memberData || memberData.length === 0) {
-        set({ allUserSessions: [], allUserSessionsLoading: false });
+        set({ 
+          allUserSessions: [], 
+          allUserSessionsLoading: false,
+          allUserSessionsInitialized: true,
+        });
         return;
       }
 
@@ -317,7 +325,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       ];
 
       if (groupIds.length === 0) {
-        set({ allUserSessions: [], allUserSessionsLoading: false });
+        set({ 
+          allUserSessions: [], 
+          allUserSessionsLoading: false,
+          allUserSessionsInitialized: true,
+        });
         return;
       }
 
@@ -331,7 +343,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
       if (sessionsError) {
         console.error("Error fetching all user sessions:", sessionsError);
-        set({ allUserSessions: [], allUserSessionsLoading: false });
+        set({ 
+          allUserSessions: [], 
+          allUserSessionsLoading: false,
+          allUserSessionsInitialized: true,
+        });
         return;
       }
 
@@ -384,7 +400,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       });
     } catch (error) {
       console.error("Error fetching all user sessions:", error);
-      set({ allUserSessions: [], allUserSessionsLoading: false });
+      set({ 
+        allUserSessions: [], 
+        allUserSessionsLoading: false,
+        allUserSessionsInitialized: true,
+      });
     }
   },
 

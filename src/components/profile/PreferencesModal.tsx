@@ -21,12 +21,14 @@ interface PreferencesModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   emptyFields: EmptyFields;
+  showNameField?: boolean; // Control whether to show the name field
 }
 
 export function PreferencesModal({
   open,
   onOpenChange,
   emptyFields,
+  showNameField = true, // Default to showing name field
 }: PreferencesModalProps) {
   const { user, updateUserProfile } = useAllStores();
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +52,8 @@ export function PreferencesModal({
       // Otherwise, update all fields
       const shouldUpdateAll = Object.keys(emptyFields).length === 0;
 
-      if (shouldUpdateAll || emptyFields.name) {
+      // Only update name if showNameField is true and it's in emptyFields or shouldUpdateAll
+      if (showNameField && (shouldUpdateAll || emptyFields.name)) {
         if (data.name) updateData.name = data.name;
       }
 
@@ -111,6 +114,7 @@ export function PreferencesModal({
           user={user}
           onSubmit={onSubmit}
           showAllFields={true}
+          showNameField={showNameField}
           disabled={isLoading}
           onFormChange={setHasChanges}
           formRef={formRef}

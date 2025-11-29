@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import {
   Empty,
   EmptyHeader,
@@ -11,12 +13,14 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from "@/components/ui/empty";
-import { Clock, PartyPopper } from "lucide-react";
+import { Clock, PartyPopper, ArrowRight, CheckSquare } from "lucide-react";
+import Link from "next/link";
 import type { Todo } from "@/lib/types/todo";
 import type { TodoPriority } from "@/lib/types/todo-enums";
 
 interface DashboardTodosCardProps {
   todos: Todo[];
+  allTodos: Todo[]; // All todos for progress calculation
   isLoading: boolean;
   onToggleTodo: (todoId: number, currentStatus: Todo["status"]) => void;
 }
@@ -56,12 +60,49 @@ const formatDate = (dateString: string | null) => {
 
 export function DashboardTodosCard({
   todos,
+  allTodos,
   isLoading,
   onToggleTodo,
 }: DashboardTodosCardProps) {
+  // Calculate progress
+  const progress = allTodos.length > 0
+    ? Math.round(
+        (allTodos.filter((t) => t.status === "completed").length /
+          allTodos.length) *
+          100
+      )
+    : 0;
+
+  const completedCount = allTodos.filter((t) => t.status === "completed").length;
+  const totalCount = allTodos.length;
+
   return (
-    <Card className="p-3 w-full">
-      <h2 className="text-base font-semibold mb-2">Your Todos</h2>
+    <Card className="p-4 w-full">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <CheckSquare className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Your Todos</h2>
+        </div>
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/dashboard/todo" className="text-xs">
+            View All
+            <ArrowRight className="ml-1 h-3 w-3" />
+          </Link>
+        </Button>
+      </div>
+
+      {/* Progress Section */}
+      {!isLoading && allTodos.length > 0 && (
+        <div className="space-y-2 mb-4 pb-4 border-b">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Progress</span>
+            <span className="font-semibold text-primary">
+              {completedCount} / {totalCount}
+            </span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+      )}
       {isLoading ? (
         <div className="space-y-2 flex flex-col">
           {[...Array(3)].map((_, i) => (
@@ -74,15 +115,21 @@ export function DashboardTodosCard({
             <EmptyMedia variant="icon">
               <PartyPopper className="h-6 w-6" />
             </EmptyMedia>
-            <EmptyTitle>Hurray! Nothing due today anymore!</EmptyTitle>
+            <EmptyTitle>
+              {allTodos.length === 0
+                ? "No todos yet"
+                : "All caught up!"}
+            </EmptyTitle>
             <EmptyDescription>
-              Go enjoy yourself! You&apos;ve completed all your tasks. 🎉
+              {allTodos.length === 0
+                ? "Create your first todo to get started"
+                : "You've completed all your upcoming tasks! 🎉"}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="space-y-1.5 flex flex-col">
-          {todos.map((todo) => {
+        <div className="space-y-2 flex flex-col max-h-[400px] overflow-y-auto">
+          {todos.slice(0, 5).map((todo) => {
             const isOverdue =
               todo.due_date &&
               new Date(todo.due_date) < new Date() &&
@@ -170,6 +217,19 @@ export function DashboardTodosCard({
               </div>
             );
           })}
+          {todos.length > 5 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full mt-2"
+              asChild
+            >
+              <Link href="/dashboard/todo">
+                View {todos.length - 5} more todos
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          )}
         </div>
       )}
     </Card>

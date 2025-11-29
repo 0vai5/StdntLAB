@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { createClient } from "@/lib/supabase/client";
+import type { UserProfile } from "@/lib/types/user";
 
 export interface UserGroup {
   id: number;
@@ -14,11 +15,30 @@ export interface UserGroup {
   user_role: string;
 }
 
+export interface RecommendedGroup {
+  id: number;
+  name: string;
+  description: string | null;
+  tags: string[] | null;
+  is_public: boolean;
+  max_members: number;
+  owner_id: number;
+  created_at: string;
+  member_count: number;
+  match_score?: number; // Relevance score based on preferences
+}
+
 interface GroupState {
   groups: UserGroup[];
   isLoading: boolean;
   isInitialized: boolean;
   currentUserId: number | null; // Track which user's groups are loaded
+
+  // Recommended Groups
+  recommendedGroups: RecommendedGroup[];
+  recommendedGroupsLoading: boolean;
+  recommendedGroupsInitialized: boolean;
+  recommendedGroupsUserId: number | null; // Track which user's recommendations are loaded
 
   // Actions
   initialize: (userId: number) => Promise<void>;
@@ -31,6 +51,11 @@ interface GroupState {
   updateGroup: (groupId: number, updates: Partial<UserGroup>) => void;
   clearGroups: () => void;
   leaveGroup: (groupId: number, userId: number) => Promise<void>;
+  
+  // Recommended Groups Actions
+  initializeRecommendedGroups: (userId: number, userProfile: UserProfile) => Promise<void>;
+  fetchRecommendedGroups: (userId: number, userProfile: UserProfile) => Promise<void>;
+  clearRecommendedGroups: () => void;
 }
 
 export const useGroupStore = create<GroupState>((set, get) => ({
@@ -38,6 +63,12 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   isLoading: false,
   isInitialized: false,
   currentUserId: null,
+
+  // Recommended Groups
+  recommendedGroups: [],
+  recommendedGroupsLoading: false,
+  recommendedGroupsInitialized: false,
+  recommendedGroupsUserId: null,
 
   initialize: async (userId: number) => {
     const state = get();
@@ -167,6 +198,12 @@ export const useGroupStore = create<GroupState>((set, get) => ({
 
   refreshGroups: async (userId: number) => {
     await get().fetchUserGroups(userId);
+    // If recommendations are initialized, invalidate them so they refresh with updated joined groups
+    const state = get();
+    if (state.recommendedGroupsInitialized && state.recommendedGroupsUserId === userId) {
+      // Invalidate recommendations - they will be re-fetched when dashboard checks
+      set({ recommendedGroupsInitialized: false });
+    }
   },
 
   hasGroups: () => {
@@ -203,6 +240,168 @@ export const useGroupStore = create<GroupState>((set, get) => ({
 
   clearGroups: () => {
     set({ groups: [], currentUserId: null, isInitialized: false });
+  },
+
+  // Recommended Groups Actions
+  initializeRecommendedGroups: async (userId: number, userProfile: UserProfile) => {
+    const state = get();
+    // If already initialized for this user, don't re-fetch
+    if (
+      state.recommendedGroupsInitialized &&
+      state.recommendedGroupsUserId === userId &&
+      state.recommendedGroups.length > 0
+    ) {
+      return;
+    }
+    // If user changed, clear recommendations first
+    if (state.recommendedGroupsUserId !== null && state.recommendedGroupsUserId !== userId) {
+      set({ 
+        recommendedGroups: [], 
+        recommendedGroupsUserId: null, 
+        recommendedGroupsInitialized: false 
+      });
+    }
+    set({ recommendedGroupsLoading: true, recommendedGroupsInitialized: false });
+    await get().fetchRecommendedGroups(userId, userProfile);
+    set({ 
+      recommendedGroupsLoading: false, 
+      recommendedGroupsInitialized: true, 
+      recommendedGroupsUserId: userId 
+    });
+  },
+
+  fetchRecommendedGroups: async (userId: number, userProfile: UserProfile) => {
+    set({ recommendedGroupsLoading: true });
+    const supabase = createClient();
+
+    try {
+      // Get numeric user ID if userId is a UUID string
+      let numericUserId: number;
+      if (typeof userId === "string") {
+        const { data: userData } = await supabase
+          .from("Users")
+          .select("id")
+          .eq("user_id", userId)
+          .single();
+
+        if (!userData) {
+          set({ recommendedGroups: [], recommendedGroupsLoading: false });
+          return;
+        }
+        numericUserId = userData.id;
+      } else {
+        numericUserId = userId;
+      }
+
+      // Get groups the user is already a member of (to exclude them)
+      const { data: memberData } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", numericUserId);
+
+      const joinedGroupIds = new Set(
+        (memberData || []).map((m) => m.group_id).filter((id): id is number => id !== null)
+      );
+
+      // Fetch all public groups
+      const { data: allGroups, error: groupsError } = await supabase
+        .from("groups")
+        .select("*")
+        .eq("is_public", true);
+
+      if (groupsError || !allGroups) {
+        console.error("Error fetching recommended groups:", groupsError);
+        set({ recommendedGroups: [], recommendedGroupsLoading: false });
+        return;
+      }
+
+      // Get member counts for all groups
+      const memberCountPromises = allGroups.map(async (group) => {
+        const { count } = await supabase
+          .from("group_members")
+          .select("*", { count: "exact", head: true })
+          .eq("group_id", group.id);
+        return { groupId: group.id, count: count || 0 };
+      });
+
+      const memberCounts = await Promise.all(memberCountPromises);
+      const memberCountMap = new Map(
+        memberCounts.map(({ groupId, count }) => [groupId, count])
+      );
+
+      // Filter groups that user hasn't joined, are not full, and calculate match scores
+      const groupsWithScores = allGroups
+        .filter((group) => !joinedGroupIds.has(group.id)) // Exclude groups user has joined
+        .map((group) => {
+          const memberCount = memberCountMap.get(group.id) || 0;
+          // Skip if group is full
+          if (memberCount >= group.max_members) {
+            return null;
+          }
+
+          // Calculate match score based on user preferences
+          let matchScore = 0;
+          const groupTags = group.tags || [];
+
+          // Match subjects (highest weight)
+          if (userProfile.subjects && userProfile.subjects.length > 0) {
+            const matchingSubjects = userProfile.subjects.filter((subject) =>
+              groupTags.some((tag) => tag.toLowerCase().includes(subject.toLowerCase()))
+            );
+            matchScore += matchingSubjects.length * 10;
+          }
+
+          // Match education level
+          if (userProfile.education_level && groupTags.length > 0) {
+            const educationLevelLower = userProfile.education_level.toLowerCase();
+            const hasEducationMatch = groupTags.some((tag) =>
+              tag.toLowerCase().includes(educationLevelLower)
+            );
+            if (hasEducationMatch) matchScore += 5;
+          }
+
+          // Match study style
+          if (userProfile.study_style && groupTags.length > 0) {
+            const studyStyleLower = userProfile.study_style.toLowerCase();
+            const hasStyleMatch = groupTags.some((tag) =>
+              tag.toLowerCase().includes(studyStyleLower)
+            );
+            if (hasStyleMatch) matchScore += 3;
+          }
+
+          // Boost score for groups with more tags (more descriptive)
+          matchScore += groupTags.length * 0.5;
+
+          // Boost score for groups with more members (more active)
+          matchScore += memberCount * 0.2;
+
+          return {
+            ...group,
+            member_count: memberCount,
+            match_score: matchScore,
+          };
+        })
+        .filter((group): group is RecommendedGroup => group !== null)
+        .sort((a, b) => (b.match_score || 0) - (a.match_score || 0))
+        .slice(0, 6); // Limit to top 6 recommendations
+
+      set({
+        recommendedGroups: groupsWithScores,
+        recommendedGroupsLoading: false,
+        recommendedGroupsUserId: numericUserId,
+      });
+    } catch (error) {
+      console.error("Error fetching recommended groups:", error);
+      set({ recommendedGroups: [], recommendedGroupsLoading: false });
+    }
+  },
+
+  clearRecommendedGroups: () => {
+    set({ 
+      recommendedGroups: [], 
+      recommendedGroupsUserId: null, 
+      recommendedGroupsInitialized: false 
+    });
   },
 
   leaveGroup: async (groupId: number, userId: number) => {

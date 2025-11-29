@@ -11,6 +11,7 @@ import { DashboardTodosCard } from "@/components/dashboard/DashboardTodosCard";
 import { MinutesStudiedCard } from "@/components/dashboard/MinutesStudiedCard";
 import { DaysLeftToTargetCard } from "@/components/dashboard/DaysLeftToTargetCard";
 import { GroupMatchingCTA } from "@/components/dashboard/GroupMatchingCTA";
+import { RecommendedGroupsCard } from "@/components/dashboard/RecommendedGroupsCard";
 import {
   getEmptyFields,
   getProfileCompletionPercentage,
@@ -37,6 +38,10 @@ export default function DashboardPage() {
     groupsInitialized,
     initializeGroups,
     hasGroups,
+    recommendedGroups,
+    recommendedGroupsLoading,
+    recommendedGroupsInitialized,
+    initializeRecommendedGroups,
   } = useAllStores();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const emptyFields = getEmptyFields(user);
@@ -64,14 +69,39 @@ export default function DashboardPage() {
     }
   }, [user?.id, groupsInitialized, initializeGroups, groupsLoading, isInitialized, isLoading]);
 
-  // Calculate progress - must be called before any conditional returns
-  const progress = useMemo(() => {
-    const total = todos.length;
-    const completed = todos.filter((t) => t.status === "completed").length;
-    return total > 0 ? Math.round((completed / total) * 100) : 0;
-  }, [todos]);
+  // Initialize recommended groups if user exists, profile is complete, and not already initialized
+  useEffect(() => {
+    // Wait for auth to initialize before checking user
+    if (!isInitialized || isLoading) {
+      return;
+    }
+    // Only fetch recommendations if:
+    // 1. User exists
+    // 2. Profile is complete (has preferences)
+    // 3. Not already loading
+    // 4. Not already initialized
+    if (
+      user?.id &&
+      profileComplete &&
+      !recommendedGroupsLoading &&
+      !recommendedGroupsInitialized &&
+      user.subjects &&
+      user.subjects.length > 0 // At least need subjects for matching
+    ) {
+      initializeRecommendedGroups(Number(user.id), user);
+    }
+  }, [
+    user?.id,
+    user,
+    profileComplete,
+    recommendedGroupsInitialized,
+    initializeRecommendedGroups,
+    recommendedGroupsLoading,
+    isInitialized,
+    isLoading,
+  ]);
 
-  // Get and sort incomplete todos by due_date and priority - must be called before any conditional returns
+  // Get and sort incomplete todos by due_date and priority - show upcoming todos (next 7 days)
   const incompleteTodos = useMemo(() => {
     const priorityOrder: Record<TodoPriority | "none", number> = {
       high: 3,
@@ -81,9 +111,11 @@ export default function DashboardPage() {
     };
 
     const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
+    today.setHours(0, 0, 0, 0);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
 
-    // Filter: only show incomplete todos that are due today or have no due date
+    // Filter: show incomplete todos due in the next 7 days or with no due date
     return todos
       .filter((todo) => {
         // Exclude completed todos
@@ -92,9 +124,10 @@ export default function DashboardPage() {
         // Include todos without a due date
         if (!todo.due_date) return true;
 
-        // Include todos due today
-        const todoDateStr = new Date(todo.due_date).toISOString().split("T")[0];
-        return todoDateStr === todayStr;
+        // Include todos due within the next 7 days
+        const todoDate = new Date(todo.due_date);
+        todoDate.setHours(0, 0, 0, 0);
+        return todoDate >= today && todoDate <= nextWeek;
       })
       .sort((a, b) => {
         // First sort by due_date (todos with due date first, then nulls)
@@ -185,6 +218,7 @@ export default function DashboardPage() {
           open={isModalOpen}
           onOpenChange={setIsModalOpen}
           emptyFields={emptyFields}
+          showNameField={false}
         />
       </>
     );
@@ -237,27 +271,25 @@ export default function DashboardPage() {
       {/* Group Matching CTA - Only show if user is not in any groups */}
       {!groupsLoading && !hasGroups() && <GroupMatchingCTA />}
 
-      {/* Progress */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Progress</span>
-          <span className="text-sm font-semibold text-primary">
-            {progress}%
-          </span>
-        </div>
-        <Progress value={progress} className="h-3" />
-      </div>
-
       {/* Dashboard Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <DashboardTodosCard
           todos={incompleteTodos}
+          allTodos={todos}
           isLoading={todosLoading}
           onToggleTodo={handleToggleTodo}
         />
         <MinutesStudiedCard />
         <DaysLeftToTargetCard />
       </div>
+
+      {/* Recommended Groups Card - Show if user has groups or recommendations */}
+      {profileComplete && (
+        <RecommendedGroupsCard
+          recommendedGroups={recommendedGroups}
+          isLoading={recommendedGroupsLoading}
+        />
+      )}
     </div>
   );
 }

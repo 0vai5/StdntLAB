@@ -40,9 +40,9 @@ export default function GroupMaterialPage() {
   const groupId = params.id as string;
   const numericGroupId = parseInt(groupId);
 
-  // Fetch group details
+  // Fetch group details and initialize materials in parallel
   useEffect(() => {
-    const fetchGroup = async () => {
+    const fetchData = async () => {
       if (!groupId || isNaN(numericGroupId)) {
         toast.error("Invalid group ID");
         router.push("/dashboard");
@@ -52,19 +52,26 @@ export default function GroupMaterialPage() {
       setIsLoadingGroup(true);
       try {
         const supabase = createClient();
-        const { data: groupData, error } = await supabase
-          .from("groups")
-          .select("id, name, description")
-          .eq("id", numericGroupId)
-          .single();
-
-        if (error || !groupData) {
-          toast.error("Group not found");
-          router.push("/dashboard");
-          return;
-        }
-
-        setGroup(groupData);
+        
+        // Fetch group details and initialize materials in parallel for faster loading
+        await Promise.all([
+          supabase
+            .from("groups")
+            .select("id, name, description")
+            .eq("id", numericGroupId)
+            .single()
+            .then(({ data: groupData, error }) => {
+              if (error || !groupData) {
+                toast.error("Group not found");
+                router.push("/dashboard");
+                setIsLoadingGroup(false);
+                return;
+              }
+              setGroup(groupData);
+            }),
+          // Initialize materials immediately without waiting for group
+          initializeMaterials(numericGroupId),
+        ]);
       } catch (error) {
         console.error("Error fetching group:", error);
         toast.error("Failed to load group");
@@ -74,15 +81,8 @@ export default function GroupMaterialPage() {
       }
     };
 
-    fetchGroup();
-  }, [groupId, numericGroupId, router]);
-
-  // Initialize materials when group is loaded
-  useEffect(() => {
-    if (!isLoadingGroup && group && !isNaN(numericGroupId)) {
-      initializeMaterials(numericGroupId);
-    }
-  }, [isLoadingGroup, group, numericGroupId, initializeMaterials]);
+    fetchData();
+  }, [groupId, numericGroupId, router, initializeMaterials]);
 
   // Filter materials based on search query
   const filteredMaterials = useMemo(() => {
@@ -98,7 +98,8 @@ export default function GroupMaterialPage() {
     );
   }, [groupMaterial, searchQuery]);
 
-  if (isLoadingGroup) {
+  // Show loading state while group is loading OR materials are initializing
+  if (isLoadingGroup || (materialsLoading && groupMaterial.length === 0)) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
@@ -108,6 +109,16 @@ export default function GroupMaterialPage() {
         <Card className="p-6">
           <Skeleton className="h-32 w-full" />
         </Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="p-6">
+              <Skeleton className="h-6 w-3/4 mb-4" />
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-2/3 mb-4" />
+              <Skeleton className="h-4 w-1/2" />
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }

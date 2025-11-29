@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, Trash2 } from "lucide-react";
+import { ArrowLeft, Users, Trash2, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { useAllStores } from "@/store";
 import { RemoveMemberDialog } from "@/components/groups/RemoveMemberDialog";
+import { LeaveGroupDialog } from "@/components/groups/LeaveGroupDialog";
 
 interface GroupMember {
   id: number;
@@ -48,6 +49,7 @@ export default function GroupMembersPage() {
     null
   );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
 
   const groupId = params.id as string;
 
@@ -160,11 +162,17 @@ export default function GroupMembersPage() {
     setMemberToRemove(null);
   };
 
+  const numericUserId =
+    user && (typeof user.id === "number" ? user.id : parseInt(user.id || "0"));
+
   const isOwner =
-    group &&
-    user &&
-    group.owner_id ===
-      (typeof user.id === "number" ? user.id : parseInt(user.id || "0"));
+    group && user && group.owner_id === numericUserId;
+
+  // Find current user's role in the group
+  const currentUserMember = members.find(
+    (member) => member.user_id === numericUserId
+  );
+  const currentUserRole = currentUserMember?.role || null;
 
   if (isLoading) {
     return (
@@ -213,10 +221,23 @@ export default function GroupMembersPage() {
         {/* Group Info Card */}
         <Card className="p-6">
           <div className="space-y-4">
-            <div>
-              <h2 className="text-lg font-semibold mb-2">{group.name}</h2>
-              {group.description && (
-                <p className="text-muted-foreground">{group.description}</p>
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold mb-2">{group.name}</h2>
+                {group.description && (
+                  <p className="text-muted-foreground">{group.description}</p>
+                )}
+              </div>
+              {/* Leave Group Button - Only show if user is not the owner */}
+              {!isOwner && currentUserRole && (
+                <Button
+                  variant="outline"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+                  onClick={() => setIsLeaveDialogOpen(true)}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Leave Group
+                </Button>
               )}
             </div>
 
@@ -334,6 +355,24 @@ export default function GroupMembersPage() {
         user={user}
         onSuccess={handleRemoveSuccess}
       />
+
+      {/* Leave Group Dialog */}
+      {currentUserRole && (
+        <LeaveGroupDialog
+          open={isLeaveDialogOpen}
+          onOpenChange={setIsLeaveDialogOpen}
+          group={{
+            id: group.id,
+            name: group.name,
+            user_role: currentUserRole,
+          }}
+          user={user}
+          onSuccess={() => {
+            // Redirect to dashboard after leaving
+            router.push("/dashboard");
+          }}
+        />
+      )}
     </>
   );
 }

@@ -230,7 +230,7 @@ export default function GroupPage() {
         </h1>
       </div>
 
-      {/* Group Info */}
+      {/* 1. Group Overview Card - Context and Information */}
       <Card className="p-6">
         <div className="space-y-4">
           {group.description && (
@@ -267,9 +267,9 @@ export default function GroupPage() {
         </div>
       </Card>
 
-      {/* Quiz and Material Cards Row */}
+      {/* 2. Primary Action Cards - Urgent and Important Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Quiz Due Card - Always shown */}
+        {/* Quiz Due Card - High Priority Action Item */}
         {!isLoadingQuizzes && (
           <QuizDueCard 
             quiz={unattemptedQuiz || null} 
@@ -277,7 +277,7 @@ export default function GroupPage() {
           />
         )}
 
-        {/* Material Upload Card */}
+        {/* Material Upload Card - Quick Action */}
         <Card className="p-6 border-primary/20 bg-primary/5">
           <div className="flex items-start gap-4">
             <div className="p-3 rounded-lg bg-primary/10">
@@ -300,7 +300,7 @@ export default function GroupPage() {
         </Card>
       </div>
 
-      {/* Quiz Leaderboard - Full Width */}
+      {/* 3. Performance & Analytics - Quiz Leaderboard */}
       {!isLoadingQuizzes && latestQuiz && leaderboardData.length > 0 && (
         <QuizLeaderboard
           submissions={leaderboardData}

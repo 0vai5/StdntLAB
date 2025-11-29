@@ -51,14 +51,14 @@ export default function GroupQuizzesPage() {
 
   useEffect(() => {
     const fetchQuizzes = async () => {
-      // Wait for auth to initialize before checking user
-      if (!isInitialized || authLoading) {
-        return;
-      }
-
       if (!groupId || isNaN(numericGroupId)) {
         toast.error("Invalid group ID");
         router.push("/dashboard");
+        return;
+      }
+
+      // Wait for auth to initialize
+      if (!isInitialized || authLoading) {
         return;
       }
 
@@ -74,26 +74,30 @@ export default function GroupQuizzesPage() {
         const numericUserId =
           typeof user.id === "number" ? user.id : parseInt(user.id || "0");
 
-        // Check if user is a member of the group
-        const { data: memberData, error: memberError } = await supabase
-          .from("group_members")
-          .select("id")
-          .eq("group_id", numericGroupId)
-          .eq("user_id", numericUserId)
-          .single();
+        // Fetch membership check and quizzes in parallel for faster loading
+        const [memberResult, quizzesResult] = await Promise.all([
+          supabase
+            .from("group_members")
+            .select("id")
+            .eq("group_id", numericGroupId)
+            .eq("user_id", numericUserId)
+            .single(),
+          supabase
+            .from("quizzes")
+            .select("*")
+            .eq("group_id", numericGroupId)
+            .order("created_at", { ascending: false }),
+        ]);
+
+        const { data: memberData, error: memberError } = memberResult;
+        const { data: quizzesData, error: quizzesError } = quizzesResult;
 
         if (memberError || !memberData) {
           toast.error("You are not a member of this group");
           router.push(`/group/${groupId}`);
+          setIsLoading(false);
           return;
         }
-
-        // Fetch all quizzes for the group
-        const { data: quizzesData, error: quizzesError } = await supabase
-          .from("quizzes")
-          .select("*")
-          .eq("group_id", numericGroupId)
-          .order("created_at", { ascending: false });
 
         if (quizzesError) {
           console.error("Error fetching quizzes:", quizzesError);
@@ -104,25 +108,25 @@ export default function GroupQuizzesPage() {
 
         setQuizzes(quizzesData || []);
 
-        // Fetch all submissions for the current user
+        // Fetch submissions if there are quizzes (non-blocking)
         if (quizzesData && quizzesData.length > 0) {
           const quizIds = quizzesData.map((q) => q.id);
-          const { data: submissionsData, error: submissionsError } =
-            await supabase
-              .from("quiz_submission")
-              .select("*")
-              .eq("user_id", numericUserId)
-              .in("quiz_id", quizIds);
-
-          if (submissionsError) {
-            console.error("Error fetching submissions:", submissionsError);
-          } else {
-            const submissionsMap = new Map<number, QuizSubmission>();
-            (submissionsData || []).forEach((sub) => {
-              submissionsMap.set(sub.quiz_id, sub);
+          supabase
+            .from("quiz_submission")
+            .select("*")
+            .eq("user_id", numericUserId)
+            .in("quiz_id", quizIds)
+            .then(({ data: submissionsData, error: submissionsError }) => {
+              if (submissionsError) {
+                console.error("Error fetching submissions:", submissionsError);
+              } else {
+                const submissionsMap = new Map<number, QuizSubmission>();
+                (submissionsData || []).forEach((sub) => {
+                  submissionsMap.set(sub.quiz_id, sub);
+                });
+                setSubmissions(submissionsMap);
+              }
             });
-            setSubmissions(submissionsMap);
-          }
         }
       } catch (error) {
         console.error("Error fetching quizzes:", error);
@@ -142,9 +146,7 @@ export default function GroupQuizzesPage() {
     }
 
     const query = searchQuery.toLowerCase();
-    return quizzes.filter((quiz) =>
-      quiz.title.toLowerCase().includes(query)
-    );
+    return quizzes.filter((quiz) => quiz.title.toLowerCase().includes(query));
   }, [quizzes, searchQuery]);
 
   if (isLoading) {
@@ -233,7 +235,7 @@ export default function GroupQuizzesPage() {
                       {isAttempted && (
                         <Badge
                           variant="default"
-                          className="bg-green-500 text-white shrink-0"
+                          className="bg-green-600 dark:bg-green-500 text-white shrink-0"
                         >
                           <CheckCircle2 className="h-3 w-3 mr-1" />
                           Attempted
@@ -292,4 +294,3 @@ export default function GroupQuizzesPage() {
     </div>
   );
 }
-

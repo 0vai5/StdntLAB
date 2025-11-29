@@ -116,8 +116,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const supabase = createClient();
     await supabase.auth.signOut();
     set({ user: null, authUser: null });
-    // Clear groups when user signs out
+    // Clear groups and recommendations when user signs out
     useGroupStore.getState().clearGroups();
+    useGroupStore.getState().clearRecommendedGroups();
   },
 
   fetchUserProfile: async () => {
@@ -203,5 +204,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     // Refresh user profile
     await get().fetchUserProfile();
+    
+    // Invalidate recommended groups so they refresh with new preferences
+    const groupStore = useGroupStore.getState();
+    if (groupStore.recommendedGroupsInitialized) {
+      groupStore.clearRecommendedGroups();
+    }
   },
 }));

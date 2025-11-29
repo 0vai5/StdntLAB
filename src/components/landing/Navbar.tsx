@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Menu, X, LayoutDashboard } from "lucide-react";
 import { useState } from "react";
 import { useAllStores } from "@/store";
@@ -68,6 +69,7 @@ export function Navbar() {
 
           {/* CTA Buttons / User Menu */}
           <div className="hidden md:flex items-center gap-3">
+            <ThemeToggle />
             {isLoading ? (
               <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
             ) : user ? (
@@ -134,6 +136,12 @@ export function Navbar() {
             >
               Testimonials
             </Link>
+            <div className="px-4 pt-2 border-t">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Theme</span>
+                <ThemeToggle />
+              </div>
+            </div>
             <div className="px-4 pt-4 space-y-2 border-t">
               {isLoading ? (
                 <div className="h-10 w-full rounded-md bg-muted animate-pulse" />

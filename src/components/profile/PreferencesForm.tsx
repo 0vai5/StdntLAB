@@ -79,6 +79,7 @@ interface PreferencesFormProps {
   user: UserProfile | null;
   onSubmit: (data: ProfilePreferencesFormData) => Promise<void>;
   showAllFields?: boolean;
+  showNameField?: boolean; // Control whether to show the name field
   disabled?: boolean;
   onFormChange?: (hasChanges: boolean) => void;
   formRef?: React.RefObject<HTMLFormElement | null>;
@@ -88,6 +89,7 @@ export function PreferencesForm({
   user,
   onSubmit,
   showAllFields = false,
+  showNameField = true, // Default to showing name field
   disabled = false,
   onFormChange,
   formRef,
@@ -121,26 +123,35 @@ export function PreferencesForm({
   useEffect(() => {
     if (!onFormChange) return;
 
-    const hasChanges = JSON.stringify({
-      name: user?.name || "",
+    // Build comparison objects, excluding name if showNameField is false
+    const userData: Record<string, any> = {
       timezone: user?.timezone || "",
       days_of_week: user?.days_of_week || [],
       study_times: user?.study_times || [],
       education_level: user?.education_level || "",
       subjects: user?.subjects || [],
       study_style: user?.study_style || "",
-    }) !== JSON.stringify({
-      name: formValues.name || "",
+    };
+
+    const formData: Record<string, any> = {
       timezone: formValues.timezone || "",
       days_of_week: formValues.days_of_week || [],
       study_times: formValues.study_times || [],
       education_level: formValues.education_level || "",
       subjects: formValues.subjects || [],
       study_style: formValues.study_style || "",
-    });
+    };
+
+    // Only include name in comparison if showNameField is true
+    if (showNameField) {
+      userData.name = user?.name || "";
+      formData.name = formValues.name || "";
+    }
+
+    const hasChanges = JSON.stringify(userData) !== JSON.stringify(formData);
 
     onFormChange(hasChanges);
-  }, [formValues, user, onFormChange]);
+  }, [formValues, user, onFormChange, showNameField]);
 
   // Reset form when user changes
   useEffect(() => {
@@ -178,19 +189,21 @@ export function PreferencesForm({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="name">Name</Label>
-        <Input
-          id="name"
-          {...register("name")}
-          placeholder="Enter your name"
-          disabled={disabled}
-          aria-invalid={errors.name ? "true" : "false"}
-        />
-        {errors.name && (
-          <p className="text-sm text-destructive">{errors.name.message}</p>
-        )}
-      </div>
+      {showNameField && (
+        <div className="space-y-2">
+          <Label htmlFor="name">Name</Label>
+          <Input
+            id="name"
+            {...register("name")}
+            placeholder="Enter your name"
+            disabled={disabled}
+            aria-invalid={errors.name ? "true" : "false"}
+          />
+          {errors.name && (
+            <p className="text-sm text-destructive">{errors.name.message}</p>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="timezone">Timezone</Label>

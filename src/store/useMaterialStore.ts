@@ -44,17 +44,21 @@ export const useMaterialStore = create<MaterialState>((set, get) => ({
 
   initialize: async (groupId: number) => {
     const state = get();
-    // If already initialized for this group, don't re-fetch
+    // If already initialized for this group and not loading, don't re-fetch
     if (
       state.isInitialized &&
       state.currentGroupId === groupId &&
-      state.groupMaterial.length >= 0
+      !state.isLoading
     ) {
       return;
     }
     // If group changed, clear materials first
     if (state.currentGroupId !== null && state.currentGroupId !== groupId) {
       set({ groupMaterial: [], currentGroupId: null, isInitialized: false });
+    }
+    // If already loading for this group, don't start another fetch
+    if (state.isLoading && state.currentGroupId === groupId) {
+      return;
     }
     set({ isLoading: true, isInitialized: false });
     await get().fetchGroupMaterials(groupId);

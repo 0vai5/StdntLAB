@@ -26,9 +26,13 @@ export function QuizLeaderboard({
   }
 
   const getRankIcon = (index: number) => {
-    if (index === 0) return <Trophy className="h-5 w-5 text-yellow-500" />;
-    if (index === 1) return <Medal className="h-5 w-5 text-gray-400" />;
-    if (index === 2) return <Award className="h-5 w-5 text-amber-600" />;
+    if (index === 0)
+      return (
+        <Trophy className="h-5 w-5 text-yellow-500 dark:text-yellow-400" />
+      );
+    if (index === 1) return <Medal className="h-5 w-5 text-muted-foreground" />;
+    if (index === 2)
+      return <Award className="h-5 w-5 text-amber-600 dark:text-amber-500" />;
     return null;
   };
 
@@ -43,7 +47,9 @@ export function QuizLeaderboard({
     <Card className="p-6">
       <div className="space-y-4">
         <div>
-          <h3 className="text-lg font-semibold mb-1">Latest Quiz Leaderboard</h3>
+          <h3 className="text-lg font-semibold mb-1">
+            Latest Quiz Leaderboard
+          </h3>
           <p className="text-sm text-muted-foreground">{quizTitle}</p>
         </div>
 
@@ -82,4 +88,3 @@ export function QuizLeaderboard({
     </Card>
   );
 }
-

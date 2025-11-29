@@ -86,6 +86,9 @@ export const useAllStores = () => {
     groups: groupStore.groups,
     groupsLoading: groupStore.isLoading,
     groupsInitialized: groupStore.isInitialized,
+    recommendedGroups: groupStore.recommendedGroups,
+    recommendedGroupsLoading: groupStore.recommendedGroupsLoading,
+    recommendedGroupsInitialized: groupStore.recommendedGroupsInitialized,
 
     // Material convenience accessors
     groupMaterial: materialStore.groupMaterial,
@@ -121,6 +124,9 @@ export const useAllStores = () => {
     addGroup: groupStore.addGroup,
     removeGroup: groupStore.removeGroup,
     updateGroup: groupStore.updateGroup,
+    initializeRecommendedGroups: groupStore.initializeRecommendedGroups,
+    fetchRecommendedGroups: groupStore.fetchRecommendedGroups,
+    clearRecommendedGroups: groupStore.clearRecommendedGroups,
 
     // Material Actions
     initializeMaterials: materialStore.initialize,

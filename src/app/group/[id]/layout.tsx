@@ -28,6 +28,7 @@ export default function GroupLayout({
     user,
     isLoading: isUserLoading,
     isInitialized,
+    groups,
     groupsLoading,
     groupsInitialized,
     initializeGroups,
@@ -73,29 +74,64 @@ export default function GroupLayout({
         return;
       }
 
+      const numericGroupId = parseInt(groupId);
+      if (isNaN(numericGroupId)) {
+        toast.error("Invalid group ID");
+        router.push("/dashboard");
+        return;
+      }
+
+      // Get numeric user ID
+      const numericUserId =
+        typeof user.id === "number" ? user.id : parseInt(user.id || "0");
+
+      if (!numericUserId || isNaN(numericUserId)) {
+        toast.error("User ID not found. Please refresh and try again.");
+        router.push("/dashboard");
+        return;
+      }
+
       setIsCheckingMembership(true);
 
       try {
+        // First, check if groups are initialized and if the group exists in the store
+        // This is faster than a database query
+        if (groupsInitialized && !groupsLoading) {
+          const userGroup = groups.find((g) => g.id === numericGroupId);
+          
+          if (userGroup) {
+            // User is a member (found in store)
+            setIsMember(true);
+            setIsCheckingMembership(false);
+            return;
+          }
+        }
+
+        // If groups aren't initialized yet, wait for them to load
+        // This prevents unnecessary database calls
+        if (!groupsInitialized || groupsLoading) {
+          // Wait a bit for groups to initialize, but don't wait forever
+          let attempts = 0;
+          const maxAttempts = 20; // 2 seconds max wait (20 * 100ms)
+          
+          while ((!groupsInitialized || groupsLoading) && attempts < maxAttempts) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            const state = useAllStores.getState();
+            if (state.groupsInitialized && !state.groupsLoading) {
+              const userGroup = state.groups.find((g) => g.id === numericGroupId);
+              if (userGroup) {
+                setIsMember(true);
+                setIsCheckingMembership(false);
+                return;
+              }
+              break; // Groups loaded but group not found, proceed to DB check
+            }
+            attempts++;
+          }
+        }
+
+        // If not found in store, verify with database
         const supabase = createClient();
-        const numericGroupId = parseInt(groupId);
-
-        if (isNaN(numericGroupId)) {
-          toast.error("Invalid group ID");
-          router.push("/dashboard");
-          return;
-        }
-
-        // Get numeric user ID
-        const numericUserId =
-          typeof user.id === "number" ? user.id : parseInt(user.id || "0");
-
-        if (!numericUserId || isNaN(numericUserId)) {
-          toast.error("User ID not found. Please refresh and try again.");
-          router.push("/dashboard");
-          return;
-        }
-
-        // Check if user is a member of the group
         const { data: memberData, error: memberError } = await supabase
           .from("group_members")
           .select("id")
@@ -122,7 +158,7 @@ export default function GroupLayout({
     };
 
     checkMembership();
-  }, [groupId, user, isUserLoading, router, isInitialized]);
+  }, [groupId, user, isUserLoading, router, isInitialized, groups, groupsInitialized, groupsLoading]);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);

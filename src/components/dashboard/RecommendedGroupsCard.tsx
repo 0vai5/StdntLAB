@@ -5,21 +5,31 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyMedia,
+} from "@/components/ui/empty";
 import { Users, ArrowRight, Sparkles } from "lucide-react";
 import type { RecommendedGroup } from "@/store/useGroupStore";
 
 interface RecommendedGroupsCardProps {
   recommendedGroups: RecommendedGroup[];
   isLoading: boolean;
+  isInitialized?: boolean;
 }
 
 export function RecommendedGroupsCard({
   recommendedGroups,
   isLoading,
+  isInitialized = true,
 }: RecommendedGroupsCardProps) {
   const router = useRouter();
 
-  if (isLoading) {
+  // Show loading state if loading or not initialized yet
+  if (isLoading || !isInitialized) {
     return (
       <Card className="p-6">
         <div className="space-y-4">
@@ -37,8 +47,35 @@ export function RecommendedGroupsCard({
     );
   }
 
-  if (recommendedGroups.length === 0) {
-    return null;
+  if (recommendedGroups.length === 0 && !isLoading) {
+    return (
+      <Card className="p-6 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Recommended Groups</h3>
+              <p className="text-sm text-muted-foreground">
+                Groups matching your preferences
+              </p>
+            </div>
+          </div>
+          <Empty>
+            <EmptyMedia>
+              <Users className="h-6 w-6 text-muted-foreground" />
+            </EmptyMedia>
+            <EmptyHeader>
+              <EmptyTitle>No Recommendations Available</EmptyTitle>
+              <EmptyDescription>
+                We couldn&apos;t find any groups matching your preferences at the moment.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </div>
+      </Card>
+    );
   }
 
   return (

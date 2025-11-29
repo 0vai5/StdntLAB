@@ -147,11 +147,15 @@ export const useAllStores = () => {
     sessionsLoading: sessionStore.sessionsLoading,
     sessionRequestsInitialized: sessionStore.sessionRequestsInitialized,
     sessionsInitialized: sessionStore.sessionsInitialized,
+    allUserSessions: sessionStore.allUserSessions,
+    allUserSessionsLoading: sessionStore.allUserSessionsLoading,
+    allUserSessionsInitialized: sessionStore.allUserSessionsInitialized,
 
     // Session Actions
     initializeSessions: sessionStore.initialize,
     fetchSessionRequests: sessionStore.fetchSessionRequests,
     fetchSessions: sessionStore.fetchSessions,
+    fetchAllUserSessions: sessionStore.fetchAllUserSessions,
     createSessionRequest: sessionStore.createSessionRequest,
     acceptSessionRequest: sessionStore.acceptSessionRequest,
     rejectSessionRequest: sessionStore.rejectSessionRequest,

@@ -27,6 +27,22 @@ interface Group {
   member_count?: number;
 }
 
+interface Quiz {
+  id: number;
+  title: string;
+  created_at: string;
+  user_id: number;
+  group_id: number;
+}
+
+interface QuizSubmission {
+  user_id: number;
+  username: string;
+  score: number;
+  percentage: number;
+  total_questions: number;
+}
+
 export default function GroupPage() {
   const params = useParams();
   const router = useRouter();
@@ -35,9 +51,9 @@ export default function GroupPage() {
   const [memberCount, setMemberCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [latestQuiz, setLatestQuiz] = useState<any>(null);
-  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
-  const [unattemptedQuiz, setUnattemptedQuiz] = useState<any>(null);
+  const [latestQuiz, setLatestQuiz] = useState<Quiz | null>(null);
+  const [leaderboardData, setLeaderboardData] = useState<QuizSubmission[]>([]);
+  const [unattemptedQuiz, setUnattemptedQuiz] = useState<Quiz | null>(null);
   const [isLoadingQuizzes, setIsLoadingQuizzes] = useState(true);
 
   const groupId = params.id as string;
@@ -51,11 +67,7 @@ export default function GroupPage() {
 
       // Fetch group details and member count in parallel
       const [groupResult, countResult] = await Promise.all([
-        supabase
-          .from("groups")
-          .select("*")
-          .eq("id", numericGroupId)
-          .single(),
+        supabase.from("groups").select("*").eq("id", numericGroupId).single(),
         supabase
           .from("group_members")
           .select("*", { count: "exact", head: true })
@@ -133,9 +145,7 @@ export default function GroupPage() {
         setLeaderboardData([]);
       } else {
         // Fetch usernames for submissions
-        const userIds = [
-          ...new Set(submissions?.map((s) => s.user_id) || []),
-        ];
+        const userIds = [...new Set(submissions?.map((s) => s.user_id) || [])];
         const { data: usersData } = await supabase
           .from("Users")
           .select("id, name, email")
@@ -276,9 +286,9 @@ export default function GroupPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Quiz Due Card - High Priority Action Item */}
         {!isLoadingQuizzes && (
-          <QuizDueCard 
-            quiz={unattemptedQuiz || null} 
-            groupId={numericGroupId} 
+          <QuizDueCard
+            quiz={unattemptedQuiz || null}
+            groupId={numericGroupId}
           />
         )}
 
@@ -294,7 +304,8 @@ export default function GroupPage() {
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Have something to share with the members of the group? Feel free
-                to upload the material and help your group members learn together.
+                to upload the material and help your group members learn
+                together.
               </p>
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Upload className="mr-2 h-4 w-4" />
@@ -310,7 +321,7 @@ export default function GroupPage() {
         <UpcomingSessionsCard
           groupId={numericGroupId}
           userId={numericUserId}
-          isOwner={isOwner}
+          isOwner={isOwner || false}
         />
       )}
 

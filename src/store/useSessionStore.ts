@@ -47,10 +47,16 @@ interface SessionState {
   sessionsLoading: boolean;
   sessionsInitialized: boolean;
 
+  // All User Sessions (from all groups)
+  allUserSessions: (Session & { group_name?: string })[];
+  allUserSessionsLoading: boolean;
+  allUserSessionsInitialized: boolean;
+
   // Actions
   initialize: (groupId: number, userId: number) => Promise<void>;
   fetchSessionRequests: (groupId: number, userId: number) => Promise<void>;
   fetchSessions: (groupId: number) => Promise<void>;
+  fetchAllUserSessions: (userId: number) => Promise<void>;
   createSessionRequest: (
     groupId: number,
     userId: number,
@@ -101,6 +107,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   sessions: [],
   sessionsLoading: false,
   sessionsInitialized: false,
+
+  // All User Sessions
+  allUserSessions: [],
+  allUserSessionsLoading: false,
+  allUserSessionsInitialized: false,
 
   initialize: async (groupId: number, userId: number) => {
     const state = get();
@@ -260,6 +271,120 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     } catch (error) {
       console.error("Error fetching sessions:", error);
       set({ sessions: [], sessionsLoading: false });
+    }
+  },
+
+  fetchAllUserSessions: async (userId: number) => {
+    set({ allUserSessionsLoading: true });
+    const supabase = createClient();
+
+    try {
+      // Get numeric user ID if userId is a UUID string
+      let numericUserId: number;
+      if (typeof userId === "string") {
+        const { data: userData } = await supabase
+          .from("Users")
+          .select("id")
+          .eq("user_id", userId)
+          .single();
+
+        if (!userData) {
+          set({ allUserSessions: [], allUserSessionsLoading: false });
+          return;
+        }
+        numericUserId = userData.id;
+      } else {
+        numericUserId = userId;
+      }
+
+      // Get all groups the user is a member of
+      const { data: memberData, error: memberError } = await supabase
+        .from("group_members")
+        .select("group_id")
+        .eq("user_id", numericUserId);
+
+      if (memberError || !memberData || memberData.length === 0) {
+        set({ allUserSessions: [], allUserSessionsLoading: false });
+        return;
+      }
+
+      const groupIds = [
+        ...new Set(
+          memberData
+            .map((m) => m.group_id)
+            .filter((id): id is number => id !== null)
+        ),
+      ];
+
+      if (groupIds.length === 0) {
+        set({ allUserSessions: [], allUserSessionsLoading: false });
+        return;
+      }
+
+      // Fetch all sessions from user's groups
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from("sessions")
+        .select("*")
+        .in("group_id", groupIds)
+        .order("date", { ascending: true })
+        .order("start_time", { ascending: true });
+
+      if (sessionsError) {
+        console.error("Error fetching all user sessions:", sessionsError);
+        set({ allUserSessions: [], allUserSessionsLoading: false });
+        return;
+      }
+
+      // Get group names
+      const { data: groupsData } = await supabase
+        .from("groups")
+        .select("id, name")
+        .in("id", groupIds);
+
+      const groupNamesMap = new Map<number, string>();
+      if (groupsData) {
+        groupsData.forEach((group) => {
+          groupNamesMap.set(group.id, group.name);
+        });
+      }
+
+      // Get creator names
+      const creatorIds = [
+        ...new Set(
+          (sessionsData || [])
+            .map((s) => s.created_by)
+            .filter((id): id is number => id !== null)
+        ),
+      ];
+
+      const creatorNamesMap = new Map<number, string>();
+      if (creatorIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from("Users")
+          .select("id, name")
+          .in("id", creatorIds);
+
+        if (usersData) {
+          usersData.forEach((user) => {
+            creatorNamesMap.set(user.id, user.name || "Unknown");
+          });
+        }
+      }
+
+      const sessionsWithDetails = (sessionsData || []).map((session) => ({
+        ...session,
+        creator_name: creatorNamesMap.get(session.created_by) || "Unknown",
+        group_name: groupNamesMap.get(session.group_id) || "Unknown Group",
+      }));
+
+      set({
+        allUserSessions: sessionsWithDetails,
+        allUserSessionsLoading: false,
+        allUserSessionsInitialized: true,
+      });
+    } catch (error) {
+      console.error("Error fetching all user sessions:", error);
+      set({ allUserSessions: [], allUserSessionsLoading: false });
     }
   },
 

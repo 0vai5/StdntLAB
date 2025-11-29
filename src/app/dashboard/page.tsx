@@ -8,8 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
 import { DashboardTodosCard } from "@/components/dashboard/DashboardTodosCard";
-import { MinutesStudiedCard } from "@/components/dashboard/MinutesStudiedCard";
-import { DaysLeftToTargetCard } from "@/components/dashboard/DaysLeftToTargetCard";
+import { DashboardUpcomingSessionsCard } from "@/components/dashboard/DashboardUpcomingSessionsCard";
 import { GroupMatchingCTA } from "@/components/dashboard/GroupMatchingCTA";
 import { RecommendedGroupsCard } from "@/components/dashboard/RecommendedGroupsCard";
 import {
@@ -101,6 +100,7 @@ export default function DashboardPage() {
     user,
     profileComplete,
     hasGroups,
+    groups,
     groupsInitialized,
     groupsLoading,
     recommendedGroupsInitialized,
@@ -288,8 +288,9 @@ export default function DashboardPage() {
           isLoading={todosLoading}
           onToggleTodo={handleToggleTodo}
         />
-        <MinutesStudiedCard />
-        <DaysLeftToTargetCard />
+        <div className="md:col-span-2">
+          <DashboardUpcomingSessionsCard />
+        </div>
       </div>
 
       {/* Recommended Groups Card - Show only if user has joined at least one group */}
@@ -297,6 +298,7 @@ export default function DashboardPage() {
         <RecommendedGroupsCard
           recommendedGroups={recommendedGroups}
           isLoading={recommendedGroupsLoading}
+          isInitialized={recommendedGroupsInitialized}
         />
       )}
     </div>

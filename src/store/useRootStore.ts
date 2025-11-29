@@ -3,6 +3,7 @@ import { useAuthStore } from "./useAuthStore";
 import { useTodoStore } from "./useTodoStore";
 import { useGroupStore } from "./useGroupStore";
 import { useMaterialStore } from "./useMaterialStore";
+import { useSessionStore } from "./useSessionStore";
 // import type { StoreApi } from "zustand";
 import { UserProfile } from "@/lib/types";
 import { User } from "@supabase/supabase-js";
@@ -60,6 +61,7 @@ export const useAllStores = () => {
   const todoStore = useTodoStore();
   const groupStore = useGroupStore();
   const materialStore = useMaterialStore();
+  const sessionStore = useSessionStore();
   const rootStore = useRootStore();
 
   return {
@@ -68,6 +70,7 @@ export const useAllStores = () => {
     todoStore,
     groupStore,
     materialStore,
+    sessionStore,
     rootStore,
 
     // Auth convenience accessors
@@ -136,5 +139,24 @@ export const useAllStores = () => {
     createMaterial: materialStore.createMaterial,
     updateMaterial: materialStore.updateMaterial,
     deleteMaterial: materialStore.deleteMaterial,
+
+    // Session convenience accessors
+    sessionRequests: sessionStore.sessionRequests,
+    sessions: sessionStore.sessions,
+    sessionRequestsLoading: sessionStore.sessionRequestsLoading,
+    sessionsLoading: sessionStore.sessionsLoading,
+    sessionRequestsInitialized: sessionStore.sessionRequestsInitialized,
+    sessionsInitialized: sessionStore.sessionsInitialized,
+
+    // Session Actions
+    initializeSessions: sessionStore.initialize,
+    fetchSessionRequests: sessionStore.fetchSessionRequests,
+    fetchSessions: sessionStore.fetchSessions,
+    createSessionRequest: sessionStore.createSessionRequest,
+    acceptSessionRequest: sessionStore.acceptSessionRequest,
+    rejectSessionRequest: sessionStore.rejectSessionRequest,
+    createSession: sessionStore.createSession,
+    updateSession: sessionStore.updateSession,
+    clearSessions: sessionStore.clearSessions,
   };
 };

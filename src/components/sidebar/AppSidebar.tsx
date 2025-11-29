@@ -7,7 +7,6 @@ import Image from "next/image";
 import {
   Calendar,
   CheckSquare,
-  TrendingUp,
   Settings,
   User,
   LogOut,
@@ -60,6 +59,11 @@ const navigationItems = [
     icon: CheckSquare,
     href: "/dashboard/todo",
   },
+  {
+    title: "Sessions",
+    icon: Calendar,
+    href: "/dashboard/sessions",
+  }
 ];
 
 export function AppSidebar() {

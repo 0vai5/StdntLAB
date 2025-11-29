@@ -133,6 +133,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     // Fetch user profile from Users table
+    // Add cache-busting by including updated_at timestamp in query
     const { data: dbUser, error } = await supabase
       .from("Users")
       .select("*")
@@ -184,25 +185,41 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error("User not found");
     }
 
-     const { error } = await supabase
-       .from("Users")
-       .update({
-         name: data.name,
-         timezone: data.timezone,
-         days_of_week: data.days_of_week,
-         study_times: data.study_times,
-         education_level: data.education_level,
-         subjects: data.subjects,
-         study_style: data.study_style,
-         updated_at: new Date().toISOString(),
-       })
-       .eq("user_id", currentUser.user_id);
+    // Build update object - only include fields that are actually being updated
+    const updateData: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    // Only include fields that are provided (not undefined)
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.timezone !== undefined) updateData.timezone = data.timezone;
+    if (data.days_of_week !== undefined) updateData.days_of_week = data.days_of_week;
+    if (data.study_times !== undefined) updateData.study_times = data.study_times;
+    if (data.education_level !== undefined) updateData.education_level = data.education_level;
+    if (data.subjects !== undefined) updateData.subjects = data.subjects;
+    if (data.study_style !== undefined) updateData.study_style = data.study_style;
+
+    // Optimistically update local state immediately
+    const updatedUser: UserProfile = {
+      ...currentUser,
+      ...data,
+    };
+    set({ user: updatedUser });
+
+    // Update database
+    const { error } = await supabase
+      .from("Users")
+      .update(updateData)
+      .eq("user_id", currentUser.user_id);
 
     if (error) {
+      // Revert optimistic update on error
+      set({ user: currentUser });
       throw error;
     }
 
-    // Refresh user profile
+    // Fetch fresh data from database to ensure consistency
+    // This ensures we have the latest data from the database
     await get().fetchUserProfile();
     
     // Invalidate recommended groups so they refresh with new preferences

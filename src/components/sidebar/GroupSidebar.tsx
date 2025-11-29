@@ -13,6 +13,7 @@ import {
   User,
   LogOut,
   Folder,
+  Calendar,
 } from "lucide-react";
 import {
   Sidebar,
@@ -115,6 +116,11 @@ export function GroupSidebar() {
       icon: Folder,
       href: `/group/${groupId}/collection`,
     },
+    {
+      title: "Sessions",
+      icon: Calendar,
+      href: `/group/${groupId}/sessions`,
+    }
   ];
 
   const handleSignOut = async () => {

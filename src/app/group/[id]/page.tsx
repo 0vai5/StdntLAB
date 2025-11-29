@@ -13,6 +13,7 @@ import { useAllStores } from "@/store";
 import { MaterialCreateDialog } from "@/components/material/MaterialCreateDialog";
 import { QuizLeaderboard } from "@/components/quiz/QuizLeaderboard";
 import { QuizDueCard } from "@/components/quiz/QuizDueCard";
+import { UpcomingSessionsCard } from "@/components/session/UpcomingSessionsCard";
 
 interface Group {
   id: number;
@@ -215,6 +216,10 @@ export default function GroupPage() {
     );
   }
 
+  const numericUserId =
+    user && (typeof user.id === "number" ? user.id : parseInt(user.id || "0"));
+  const isOwner = group && user && group.owner_id === numericUserId;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -299,6 +304,15 @@ export default function GroupPage() {
           </div>
         </Card>
       </div>
+
+      {/* Upcoming Sessions Card */}
+      {group && user && numericUserId && !isNaN(numericUserId) && (
+        <UpcomingSessionsCard
+          groupId={numericGroupId}
+          userId={numericUserId}
+          isOwner={isOwner}
+        />
+      )}
 
       {/* 3. Performance & Analytics - Quiz Leaderboard */}
       {!isLoadingQuizzes && latestQuiz && leaderboardData.length > 0 && (

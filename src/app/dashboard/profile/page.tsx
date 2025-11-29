@@ -13,8 +13,10 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAllStores } from "@/store";
-import { BookOpen, Calendar, Clock, GraduationCap, Mail, MapPin, Trophy, User, Users } from "lucide-react";
-import { useState } from "react";
+import { BookOpen, Calendar, Clock, GraduationCap, Mail, MapPin, Trophy, User, Users, LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { LeaveGroupDialog } from "@/components/groups/LeaveGroupDialog";
+import { Badge } from "@/components/ui/badge";
 
 const DAYS_OF_WEEK = [
   { value: "monday", label: "Monday" },
@@ -36,10 +38,40 @@ const STUDY_PERIODS = [
 ];
 
 export default function ProfilePage() {
-  const { user, isLoading } = useAllStores();
+  const { 
+    user, 
+    isLoading,
+    groups,
+    groupsLoading,
+    groupsInitialized,
+    initializeGroups,
+    isInitialized,
+  } = useAllStores();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedGroupForLeave, setSelectedGroupForLeave] = useState<number | null>(null);
   // Show all fields when editing from profile page
   const emptyFields = {};
+
+  // Initialize groups when component mounts
+  useEffect(() => {
+    if (!isInitialized || isLoading) {
+      return;
+    }
+    if (user?.id && !groupsLoading && !groupsInitialized) {
+      const numericUserId =
+        typeof user.id === "number" ? user.id : parseInt(user.id || "0");
+      if (!isNaN(numericUserId)) {
+        initializeGroups(numericUserId);
+      }
+    }
+  }, [
+    user?.id,
+    isLoading,
+    isInitialized,
+    groupsLoading,
+    groupsInitialized,
+    initializeGroups,
+  ]);
 
   const getInitials = (name?: string, email?: string) => {
     if (name) {
@@ -243,18 +275,108 @@ export default function ProfilePage() {
           </TabsContent>
 
           <TabsContent value="groups" className="mt-6">
-            <Empty>
-              <EmptyMedia variant="icon">
-                <Users className="h-6 w-6" />
-              </EmptyMedia>
-              <EmptyHeader>
-                <EmptyTitle>Coming Soon</EmptyTitle>
-                <EmptyDescription>
-                  Your study groups will be displayed here once you join or
-                  create study groups with other students.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+            {groupsLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : groups.length === 0 ? (
+              <Empty>
+                <EmptyMedia variant="icon">
+                  <Users className="h-6 w-6" />
+                </EmptyMedia>
+                <EmptyHeader>
+                  <EmptyTitle>No Groups Yet</EmptyTitle>
+                  <EmptyDescription>
+                    You haven&apos;t joined any study groups yet. Create a new group
+                    or get matched with existing groups.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              <div className="rounded-lg border">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-4 font-semibold">Group Name</th>
+                        <th className="text-left p-4 font-semibold">Description</th>
+                        <th className="text-left p-4 font-semibold">Members</th>
+                        <th className="text-left p-4 font-semibold">Role</th>
+                        <th className="text-left p-4 font-semibold">Type</th>
+                        <th className="text-right p-4 font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {groups.map((group) => (
+                        <tr
+                          key={group.id}
+                          className="border-b hover:bg-muted/30 transition-colors"
+                        >
+                          <td className="p-4">
+                            <div className="font-medium">{group.name}</div>
+                          </td>
+                          <td className="p-4">
+                            <div className="text-sm text-muted-foreground line-clamp-2 max-w-md">
+                              {group.description || "No description"}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-1.5 text-sm">
+                              <Users className="h-4 w-4 text-muted-foreground" />
+                              <span>
+                                {group.member_count} / {group.max_members}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <Badge
+                              variant={
+                                group.user_role === "owner"
+                                  ? "default"
+                                  : group.user_role === "admin"
+                                  ? "secondary"
+                                  : "outline"
+                              }
+                              className="text-xs"
+                            >
+                              {group.user_role}
+                            </Badge>
+                          </td>
+                          <td className="p-4">
+                            <Badge
+                              variant={group.is_public ? "default" : "outline"}
+                              className="text-xs"
+                            >
+                              {group.is_public ? "Public" : "Private"}
+                            </Badge>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center justify-end gap-2">
+                              {group.user_role !== "owner" && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedGroupForLeave(group.id);
+                                  }}
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  title="Leave group"
+                                >
+                                  <LogOut className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -264,6 +386,22 @@ export default function ProfilePage() {
         onOpenChange={setIsModalOpen}
         emptyFields={emptyFields}
       />
+
+      {selectedGroupForLeave && (
+        <LeaveGroupDialog
+          open={selectedGroupForLeave !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedGroupForLeave(null);
+            }
+          }}
+          group={groups.find((g) => g.id === selectedGroupForLeave) || null}
+          user={user}
+          onSuccess={() => {
+            setSelectedGroupForLeave(null);
+          }}
+        />
+      )}
     </div>
   );
 }

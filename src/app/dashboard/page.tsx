@@ -75,14 +75,20 @@ export default function DashboardPage() {
     if (!isInitialized || isLoading) {
       return;
     }
+    // Wait for groups to be initialized before checking if user has groups
+    if (!groupsInitialized || groupsLoading) {
+      return;
+    }
     // Only fetch recommendations if:
     // 1. User exists
     // 2. Profile is complete (has preferences)
-    // 3. Not already loading
-    // 4. Not already initialized
+    // 3. User has joined at least one group
+    // 4. Not already loading
+    // 5. Not already initialized
     if (
       user?.id &&
       profileComplete &&
+      hasGroups() &&
       !recommendedGroupsLoading &&
       !recommendedGroupsInitialized &&
       user.subjects &&
@@ -94,6 +100,9 @@ export default function DashboardPage() {
     user?.id,
     user,
     profileComplete,
+    hasGroups,
+    groupsInitialized,
+    groupsLoading,
     recommendedGroupsInitialized,
     initializeRecommendedGroups,
     recommendedGroupsLoading,
@@ -283,8 +292,8 @@ export default function DashboardPage() {
         <DaysLeftToTargetCard />
       </div>
 
-      {/* Recommended Groups Card - Show if user has groups or recommendations */}
-      {profileComplete && (
+      {/* Recommended Groups Card - Show only if user has joined at least one group */}
+      {profileComplete && hasGroups() && (
         <RecommendedGroupsCard
           recommendedGroups={recommendedGroups}
           isLoading={recommendedGroupsLoading}

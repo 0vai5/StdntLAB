@@ -12,6 +12,7 @@ import {
   Settings,
   User,
   LogOut,
+  Folder,
 } from "lucide-react";
 import {
   Sidebar,
@@ -108,6 +109,11 @@ export function GroupSidebar() {
       title: "Quizzes",
       icon: FileQuestion,
       href: `/group/${groupId}/quizzes`,
+    },
+    {
+      title: "Collection",
+      icon: Folder,
+      href: `/group/${groupId}/collection`,
     },
   ];
 

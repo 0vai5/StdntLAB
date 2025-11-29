@@ -471,6 +471,38 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         // Continue even if this fails
       }
 
+      // Delete all files uploaded by this user for this group
+      const { data: filesData } = await supabase
+        .from("files")
+        .select("file_id")
+        .eq("group_id", groupId)
+        .eq("user_id", numericUserId);
+
+      if (filesData && filesData.length > 0) {
+        // Delete files from storage
+        const filePaths = filesData.map((f) => f.file_id);
+        const { error: storageError } = await supabase.storage
+          .from("StdntLAB")
+          .remove(filePaths);
+
+        if (storageError) {
+          console.error("Error deleting files from storage:", storageError);
+          // Continue even if this fails
+        }
+
+        // Delete file records from database
+        const { error: filesError } = await supabase
+          .from("files")
+          .delete()
+          .eq("group_id", groupId)
+          .eq("user_id", numericUserId);
+
+        if (filesError) {
+          console.error("Error deleting files from database:", filesError);
+          // Continue even if this fails
+        }
+      }
+
       // Remove member from group_members table
       const { error: deleteError } = await supabase
         .from("group_members")
